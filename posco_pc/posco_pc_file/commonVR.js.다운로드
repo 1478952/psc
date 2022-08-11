@@ -1,0 +1,214 @@
+if (window.NodeList && !NodeList.prototype.forEach) {
+  NodeList.prototype.forEach = Array.prototype.forEach;
+}
+
+//모달 팝업
+var memberCssPath  = "${memberCssPath}";
+var modals = document.getElementsByClassName("modal");
+var modalPopup = document.getElementsByClassName("modal-popup");
+var spanes = document.getElementsByClassName("pop-close");
+var funcs = [];
+ 
+function Modal(num) {
+  return function() {    
+    modalPopup[num].onclick =  function() {
+        modals[num].style.display = "block";
+        console.log(num);
+        document.body.style.overflow = "hidden";
+    };
+     
+    spanes[num].onclick = function() {
+        modals[num].style.display = "none";
+        document.body.style.overflow = "auto";            
+    };
+  };
+}
+ 
+for(var i = 0; i < modalPopup.length; i++) {
+  funcs[i] = Modal(i);
+}
+ 
+for(var j = 0; j < modalPopup.length; j++) {
+  funcs[j]();
+}
+ 
+spanes.onclick = function(event) {
+  if (event.target.className == "modal") {
+      event.target.style.display = "none";      
+  }
+};
+
+
+$(function () {  
+    $gnb = $('#gnb');   
+    $header = $('#header');
+    $('#gnb > nav > ul > li').on('mouseenter', function(){
+        $(this).addClass('gnb-active');
+     })
+     $(document).on('mouseleave','.gnb-active', function(){
+        $(this).removeClass('gnb-active');   
+     })
+
+     //메인비주얼 오버 그라데이션
+     $('.visual-wrap .visual li').on('mouseover', function(){
+        $(this).addClass('gradation-on');
+     })
+     $('.visual-wrap .visual li').on('mouseleave', function(){
+        $(this).removeClass('gradation-on');
+     })
+
+     //테이블 펼침     
+     $('.open-tb .cl-td').click(function(){
+       $(this).next().children().children('.td-cont').slideToggle(100);
+     });
+
+     //별
+     $("#gradeSatiScore").click(function(){
+      $(this).parent().children().addClass('on');        
+      $('.star-wrap').show();
+     })
+     $(".util-star .btn-star-close").click(function(){             
+      $(this).parent().hide();        
+     })
+     $(".util-star .check-type-star").click(function(){             
+      $(this).parent().parent().hide();        
+     })   
+     //하트  
+     $(".ic_recomm").click(function(){             
+      $(this).toggleClass("on");
+     }) 
+     
+})
+
+function visualCl() {
+  var list = document.querySelectorAll(".part-list > li > #movies");
+  var list2 = document.querySelectorAll(".part-list > li .category-text");
+  var closebtn = document.querySelectorAll(".part-list > li .close");
+
+  function deletec() {
+      list.forEach(function (list) {
+          list.parentElement.classList.remove('on');
+      })
+  }
+
+  function clht() {
+      list.forEach(function (list) {
+          list.addEventListener('click', function () {
+              var parenta = list.parentElement;
+              if (parenta.classList.contains('on')) {
+                  parenta.classList.remove("on");
+              } else {
+                  deletec();
+                  parenta.classList.add("on");
+              }
+
+          })
+      })
+  }
+  clht()
+
+  function clht2() {
+    list2.forEach(function (list2) {
+        list2.addEventListener('click', function () {
+            var parenta = list2.parentElement;
+            if (parenta.classList.contains('on')) {
+                parenta.classList.remove("on");
+            } else {
+                deletec();
+                parenta.classList.add("on");
+            }
+        })
+    })
+  }  
+  clht2()
+  
+  function visualClb() {
+    closebtn.forEach(function (closebtn) {
+      closebtn.addEventListener('click', function () {
+            var parenta = closebtn.parentElement;
+            if (parenta.classList.contains('on')) {
+                parenta.classList.remove("on");
+            } else {
+                deletec();                    
+            }
+
+        })
+    })
+  }
+  visualClb()
+}
+visualCl()
+
+
+//tab
+var tabList = document.querySelectorAll('.tab_menu .list li');
+var contents = document.querySelectorAll('.tab_menu .cont_area .cont')
+var activeCont = '';
+
+for(var i = 0; i < tabList.length; i++){
+  tabList[i].querySelector('.btn').addEventListener('click', function(e){
+    e.preventDefault();
+    for(var j = 0; j < tabList.length; j++){      
+      tabList[j].classList.remove('on');
+      contents[j].style.display = 'none';
+    }    
+    this.parentNode.classList.add('on');    
+    activeCont = this.getAttribute('href');
+    document.querySelector(activeCont).style.display = 'block';
+  });
+}
+
+//tab 메인
+var tabList2 = document.querySelectorAll('.tab_menu_m .list li');
+var contents2 = document.querySelectorAll('.tab_menu_m .cont_area .cont')
+var activeCont2 = '';
+for(var i = 0; i < tabList2.length; i++){
+  contents2[1].style.display = 'none'; //추가
+  tabList2[i].querySelector('.m_btn').addEventListener('click', function(e){
+    e.preventDefault();
+    for(var j = 0; j < tabList2.length; j++){      
+      tabList2[j].classList.remove('on');
+      contents2[j].style.display = 'none';
+    }    
+    this.parentNode.classList.add('on');    
+    activeCont2 = this.getAttribute('href');
+    document.querySelector(activeCont2).style.display = 'block';
+  });
+}
+
+/* 비디오 viewer */
+function showVideo() {
+  var $viewerWrap = $("<div>", { class: "video-viewer-wrap" }),
+    $videoBox = $("<div>", { class: "video-box" }),
+//   <iframe name="text" id="text" width="100%" height="100%" frameborder="0" scrolling="yes"></iframe> 
+    $iframe = $("<iframe>", { id: "play", name: "play", frameborder: "0", scrolling: "no", width: "900px", height: "700px", allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture", allowfullscreen: true }),
+    $close = $("<button>", { class: "close", text: "닫기" });
+  $close.bind("click", function (e) {
+    $viewerWrap.remove();
+    if ($(".modal-wrap").length == 0) $("body").removeClass("modal-opened");
+  });
+  $("body")
+    .addClass("modal-opened")
+    .append($viewerWrap.append($videoBox.append($iframe)).append($close));
+  
+  document.ifrmPlay.submit();
+}
+
+//별
+var starChk = function(){
+	var star = document.querySelector('.star-wrap');
+	if(star){
+		var starNum = star.querySelectorAll('.check-type-star');
+		for(var i=0; i < starNum.length; i++) {
+			starNum[i].onclick = function(){
+				$(this).nextAll('input[type=checkbox]').prop("checked", false);
+				$(this).nextAll('.check-type-star').removeClass('on');
+				$(this).prevAll('input[type="checkbox"]').prop("checked", true);
+				$(this).addClass('on');
+			}
+		}
+	}
+};
+window.addEventListener('DOMContentLoaded', function(){
+  starChk();
+});

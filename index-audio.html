@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Bubblecon LX Player</title>
+    <link rel="shortcut icon" href="./assets/image/favicon.ico" type="image/x-icon" />
+    <!-- style -->
+    <link href="./assets/css/lx-player-new.css" rel="stylesheet" type="text/css" />
+    <style>
+        body {
+            margin: 0px;
+        }
+
+        .audio-div {
+            height: 100vh;
+        }
+
+        .img-wrapper {
+            height: 92%;
+        }
+
+        .img-wrapper img {
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <video id="lx-player" class="video-js bubble" controls preload="auto" playsinline
+            data-setup='{ "controlBar": {"pictureInPictureToggle": false} }'>
+            <!-- 동영상 자막 지원 -->
+            <track kind="captions" src="./assets/track/sample.vtt" srclang="en" label="English" default />
+            <p class="vjs-no-js">
+                영상 로드중 문제가 발생하였습니다. 영상을 시청하시려면
+                자바스크립트를 활성화해주세요.
+            </p>
+            <div class="tui"></div>
+        </video>
+    </div>
+
+    <div class="audio-div">
+        <div class="img-wrapper">
+            <img src="./assets/image/thumbnail-audio.png" alt="" width="100%" />
+        </div>
+        <audio id="lx-audio" class="lx-player-audio" src="" preload="auto"></audio>
+    </div>
+
+    <!-- youtube 사용할때 -->
+    <script src="./assets/js/posco-lx-player-with-youtube.js"></script>
+    <!-- <script src="./assets/js/posco-lx-player.js"></script> -->
+    <!--<script src="/assets/js/youtube.min.js"></script>-->
+
+    <!-- youtube 사용 안할 때 -->
+    <!-- <script src="/assets/js/posco-lx-player.js"></script> -->
+    <script>
+        // 동영상일 경우 완료 콜백 함
+
+        var video_complete_callback = function () {
+            console.log("동영상 완료 콜백");
+            // 비디오 영상 길이 구하기
+            var duration = Math.floor(lxPlayer.duration());
+            // console.log(duration);
+
+            // 비디오 현재 시점 구하기
+            var currentTime = Math.floor(lxPlayer.currentTime());
+            sendRequest(currentTime, duration);
+        };
+
+        // 오디오일 경우 완료 콜백 함수
+        var audio_complete_callback = function () {
+            console.log("오디오 완료 콜백");
+
+            // audio 태그
+            var audioElement = document.getElementById("lx-audio");
+            // console.log(audioElement);
+
+            // 오디오 길이 구하기
+            // var duration = Math.floor(audiojs.instances['audio0'].duration);
+            var duration = Math.floor(audioElement.duration);
+            // console.log(duration);
+
+            // 현재 재생 시간 구하기
+            var currentTime = Math.floor(audioElement.currentTime);
+            // console.log(currentTime);
+
+            // 10초로 이동하기 => audioElement.currentTime = 10
+
+            // 진도율 계산 코드 및 http 통신 함수 호출
+            sendRequest(currentTime, duration);
+        };
+        // 진도율 계산 코드 및 http 통신 코드는 동영상 콜백 함수와 같습니다.
+        function sendRequest(currentTime, duration) {
+            console.log("sendRequest");
+            // 진도율 계산
+            var progress = Math.floor(currentTime / duration) * 100;
+            console.log("progress = " + progress);
+
+            // 수강 시간
+            // var diffTime = currentTime - obj.setTime;
+            var diffTime = currentTime - obj.time;
+            var learningTime = diffTime >= 0 ? diffTime : currentTime;
+
+            // 실제 수강 시간(누적)
+            var actualLearningTime = new Date() - prevReq;
+
+            // 시간으로 바꾸기
+            function miliSecToTime(s) {
+                const ms = s % 1000;
+                s = (s - ms) / 1000;
+                const secs = s % 60;
+                s = (s - secs) / 60;
+                const mins = s % 60;
+                const hours = (s - mins) / 60;
+
+                return {
+                    hours: hours,
+                    mins: mins,
+                    secs: secs,
+                    ms: ms,
+                };
+            }
+
+            // 요청 보내는 데이터
+            var data = {
+                progress: progress || 100,
+                lmsparam: obj.lmsParam,
+                state: obj.state,
+                finalLearningLc: currentTime,
+                actualLearningTime: miliSecToTime(actualLearningTime),
+                learningTime: learningTime,
+            };
+
+            // http 요청 보내기
+            const xhrPost = new XMLHttpRequest();
+            xhrPost.onload = function () {
+                if (xhrPost.status === 201 || xhrPost.status === 200) {
+                    // 응답 성공
+                } else {
+                    console.error(xhrPost.responseText);
+                }
+            };
+            xhrPost.open("POST", obj.slsUrl);
+            xhrPost.setRequestHeader("Content-Type", "application/json");
+            xhrPost.send(JSON.stringify(data));
+        }
+
+        var obj = {
+            //  xapi 설정부분
+
+            // #1 actor 정의
+            email: "posco@poscohrd.com",
+            name: 1, // user seq id
+
+            // #2 activityId 정의
+            baseurl:
+                "https://lp.posco.co.kr/activity/profile/course/3/sco/2/content-id/1",
+            content_name: "content_name", // 동영상 콘텐츠
+            description: "content description", // 동영상 콘텐츠 설명
+
+            // #3 stateId 정의
+            stateId:
+                "https://www.posco.co.kr/state/course/32/student/2/device/2/interaction/1/type/2",
+
+            // #4 학습 정보 전송할 LRS url 기입
+            lrsUrl: "https://lrs1.bubblecon.io/xAPI/", // 새로운 파라미터
+
+            // 동영상 설정 부분
+            // url: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+            url: '/assets/track/exam.mp3',
+            // url: 'https://www.youtube.com/watch?v=WHNrQZM-DAY',
+            // 선택 파라미터 - 아래의 옵션은 입력하지 않는다면, 노출되지 않는 옵션
+            // time: 0,                                                  // 최초 동영상 콘텐츠 시작 시간. 초단위 (유튜브와 같은 스트리밍 서비스는 적용 불가)
+            // auto_play: false,
+            auto_play: false,
+            muted: false,
+            // muted: true,
+            watermark: "./assets/image/bbcon_water.png", // 사용하지 않겠다면 삭제
+            slsUrl: "http://dev-api.1gram.cc/api/test", // 학습 진척사항 전송 url
+            lmsParam: "123123123", // base64로 암호화된 string 데이터
+            slsInterval: 5, // 학습 진척사항에 대한 주기 설정 (Sec)
+            playback_rate: [1, 1.2, 1.5, 1.8, 2],
+            right_click_lock: { isLocked: true, guide: "aadd" },
+            // 영상 재생 완료 콜백함수 구현부
+            // complete_callback: video_complete_callback
+
+            // 한개의 동영상이 끝나고 몇초뒤에 동영상이 바뀔지 정의 (초단위)
+            delay_timeout: 0,
+            // 플레이리스트가 다끝난뒤 처음으로 반복할것인지 정의
+            playlist_repeat: true,
+            // 플레이리스트 데이터
+            playlistData: [
+                {
+                    sources: [
+                        {
+                            title: "Big Buck Bunny",
+                            src: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                            type: "video/mp4",
+                        },
+                    ],
+                    poster: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+                },
+                {
+                    sources: [
+                        {
+                            title: "Elephant Dream",
+                            src: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                            type: "video/mp4",
+                        },
+                    ],
+                    poster: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg",
+                },
+                {
+                    sources: [
+                        {
+                            title: "For Bigger Blazes",
+                            src: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                            type: "video/mp4",
+                        },
+                    ],
+                    poster: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg",
+                },
+                {
+                    sources: [
+                        {
+                            title: "For Bigger Escape",
+                            src: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+                            type: "video/mp4",
+                        },
+                    ],
+                    poster: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg",
+                },
+                {
+                    sources: [
+                        {
+                            title: "Sintel",
+                            src: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+                            type: "video/mp4",
+                        },
+                    ],
+                    poster: "https://storage.googleapis.com/gtv-videos-bucket/sample/Sintel.jpg",
+                },
+            ],
+
+            audioPlaylistData: [
+                {
+                    sources: [
+                        {
+                            title: "Cello Suite no. 1 - Prelude in G, BWV 1007",
+                            src: "https://files.musopen.org/recordings/0d2b20df-6ba6-46c9-b058-62f5e7976cb0.mp3?filename=Cello+Suite+no.+1+-+Prelude+in+G,+BWV+1007.mp3&preview",
+                        },
+                    ],
+                    poster: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+                },
+                {
+                    sources: [
+                        {
+                            title: "Sung Oribe - Prelude from Cello suite no. 1",
+                            src: "https://files.musopen.org/recordings/f5f83183-a71b-462c-bd89-6557159570e4.mp3?filename=Sung+Oribe+-+Prelude+from+Cello+suite+no.+1.mp3&preview",
+                        }
+                    ],
+                    poster: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg",
+                },
+                {
+                    sources: [
+                        {
+                            title: "Sung Oribe - Courante from Cello suite no. 1",
+                            src: "https://files.musopen.org/recordings/b749f2c0-7484-4c1a-9061-f637d2f1a39f.mp3?filename=Sung+Oribe+-+Courante+from+Cello+suite+no.+1.mp3&preview",
+                        }
+                    ],
+                    poster: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg",
+                },
+            ],
+        };
+
+        // url 포멧을 확인하여 콜백함 수 변경 및 적용
+        obj["complete_callback"] = /\.mp3/g.test(obj.url)
+            ? audio_complete_callback
+            : video_complete_callback;
+
+        player_init(obj);
+
+        // 동영상 url이 youtube일때 실행되는 기능
+        var isYoutube = /(www\.youtube\.com|youtu\.be)/g.test(obj.url);
+        if (isYoutube) {
+            // android를 채크하여 youtube css 변경
+            injectCss();
+            function injectCss() {
+                var ua = navigator.userAgent.toLowerCase();
+                var isAndroid = ua.indexOf("android") > -1;
+                if (isAndroid) {
+                    var css =
+                        ".vjs-youtube .vjs-iframe-blocker { display: none; }" +
+                        ".video-js.vjs-paused .vjs-big-play-button { display : none; }" +
+                        ".vjs-youtube .vjs-poster { display : none; }";
+                } else {
+                    var css = // iframe blocker to catch mouse events
+                        ".vjs-youtube .vjs-iframe-blocker { display: none; }" +
+                        ".vjs-youtube.vjs-user-inactive .vjs-iframe-blocker { display: block; }" +
+                        ".vjs-youtube .vjs-poster { background-size: cover; }" +
+                        ".vjs-youtube-mobile .vjs-big-play-button { display: none; }";
+                }
+                var head =
+                    document.head ||
+                    document.getElementsByTagName("head")[0];
+
+                var style = document.createElement("style");
+                style.type = "text/css";
+
+                if (style.styleSheet) {
+                    style.styleSheet.cssText = css;
+                } else {
+                    style.appendChild(document.createTextNode(css));
+                }
+
+                head.appendChild(style);
+            }
+        }
+            // lxPlayer.ready(function(){
+            //     if(confirm('이어보시겠습니까?')) {
+            //         // 동영상 120초 부터 시청하기
+            //         lxPlayer.currentTime(120);
+            //         // document.querySelector('video').play();
+            //         lxPlayer.play();
+            //         lxPlayer.muted(false);
+            //     }else{
+            //         // 동영상 0초 부터 시청하기
+            //         lxPlayer.currentTime(0);
+            //     }
+            // })
+    </script>
+</body>
+
+</html>

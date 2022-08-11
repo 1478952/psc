@@ -1,0 +1,326 @@
+/**
+ * 
+ */
+ 
+(function($){
+	/**
+     * @description ID에 대응되는 jQuery Object를 리턴한다.
+     * @method getObject
+     * @static
+     * @param
+     * @return Object
+     */ 
+	$.fn.getObject = function() { 
+		return document.getElementById($(this).attr("id"));
+	},
+	
+	/**
+     * @description name에 대응되는 jQuery Objects를 리턴한다.
+     * @method getObjecNames
+     * @static
+     * @param
+     * @return Objects
+     */ 
+	$.fn.getObjecNames = function(name, index) { 
+	//	return $(this).find("*[name="+ name +"]");
+		if (index)
+			return ($(this).find("input[name="+ name +"], select[name="+ name +"], textarea[name="+ name +"]")[index]);
+		else 
+			return $(this).find("input[name="+ name +"], select[name="+ name +"], textarea[name="+ name +"]");
+	}
+	
+	$.fn.getObjecIds = function(id, type) { 
+		if (type)
+            return $(this).find(type +"[id="+ id +"]");   	
+		else 
+            return $(this).find("*[id="+ id +"]");  
+	}
+	
+	getFormObjecNames = function(name, index) { 
+		var form = null;
+		if (index != undefined && index >= 0)
+			form = $($("form[name="+ name +"]")[index]);
+		else 
+			form = $("form[name="+ name +"]"); 
+		
+		return form;	
+	}
+	
+})(jQuery);	
+
+(function($) {
+	/**
+     * @description checkbox 전체선택 
+     * @method check
+     * @public
+     * @param target
+     * @return void
+     */ 
+	$.fn.check = function(parent, target, elements, callback) {
+		var $this = $(this);
+		var $element = $("#" + $this.attr("id") + ("_wrapper")).find("#" + parent);
+		$element.prop("checked", false);
+		// 전체선택 클릭
+		$element.unbind("click").bind("click", function() {
+			var checked = $element.is(':checked');
+			$(target).prop("checked", checked);
+			$(target).each(function() {
+				if (checked) {
+					$(this).parents('tr:first').addClass("selected");
+				} else {
+					$(this).parents('tr:first').removeClass("selected");
+				}
+			});
+		});
+		
+		// 개별선택 클릭
+		$(target).each(function() {
+			$(this).unbind("click").bind("click", function() {
+				var checked = $(this).is(':checked');
+				var checkAll = true;
+				$(target).each(function() {
+					if (!$(this).is(':checked')) {
+						checkAll = false;
+						return false;
+					}
+				});
+				if (checked) {
+					$(this).parents('tr:first').addClass("selected");
+				} else {
+					$(this).parents('tr:first').removeClass("selected");
+				}
+				$element.prop("checked", checkAll);
+				this.blur();
+			});
+			
+			var checked = $(this).is(':checked');
+			var checkAll = true;
+			$(target).each(function() {
+				if (!$(this).is(':checked')) {
+					checkAll = false;
+					return false;
+				}
+			});
+			if (checked) {
+				$(this).parents('tr:first').addClass("selected");
+//			} else {
+//				$(this).parents('tr:first').removeClass("selected");
+			}
+			$element.prop("checked", checkAll);
+		});
+		
+	}
+	
+	/**
+     * @description checkbox Validation 
+     * @method checkValidation
+     * @public
+     * @param target, message
+     * @return Boolean
+     */
+	$.fn.checkValidation = function(target, message) {
+		if ($(this).find(target + ":checked").length == 0) {
+			if (message) {
+				alert(message);
+			}
+			return false;
+		} else {
+			return true;
+		}
+	}
+	
+	/**
+     * @description checkbox addOptions 
+     * @method addOptions
+     * @public
+     * @param options, remove, selectItem
+     * @return void
+     */
+	$.fn.addOptions = function(options, remove, selectItem) {
+		if (remove) {
+			$(this).find("option").each(function() {
+				if ($(this).val() != "")
+					$(this).remove();
+			});
+		}
+		
+		if (options) {
+			for (var i = 0 ; i < options.length ; i++) {
+				$(this).append("<option value='" + options[i].key + "'>" + options[i].value + "</option>");
+			}
+		}
+		
+		if (selectItem)
+			$(this).val(selectItem);
+		
+	}
+	
+	$.fn.insertInputTag = function(map) {
+		var keys = map.keys();
+		for (var i = 0 ; i < keys.length ; i++) {
+			var value = map.get(keys[i]);
+			if ($(this).find("#" + keys[i]).length == 0) {
+				var inputHTML  	 =  "<input type='hidden' id='" + keys[i] + "' name='" + keys[i] + "' value='" + value + "' />";
+	        	$(this).append(inputHTML);
+			} else {
+				$(this).find("#" + keysrr[i]).val(value);
+			}
+		}
+	}
+	
+	$.fn.makeRequired = function(value, elements, index, clearValue) {
+		var requiredElements = elements.replace(/\s+/g,"").split(",");
+		for (var i = 0 ; i < requiredElements.length ; i++) {
+			$($(this).getObjecNames(requiredElements[i], index)).each(function(index) {
+				if ($(this).attr("disabled") == "disabled" && clearValue == undefined)
+					return;
+                var isRequired = $(this).is("[data-required]");
+                if (value) {
+					if (!isRequired) {
+                        $(this).attr("data-required", "true");
+                        $(this).addClass("required");
+                        var thElement = $(this).parent().prev();
+                        if(thElement.length > 0 && (thElement[0].tagName == "TH" || thElement[0].tagName == "th")) {
+                            if ($(this).attr("title") == undefined)
+                                $(this).attr("title", thElement.text().replace(/\*/g, ""));
+                            thElement.html(thElement.text().replace(/\*/g, "") + "<i>*</i>");
+                        }
+
+						if (clearValue) {
+							$(this).removeAttr("disabled");
+						}
+					}
+				} else {
+                    if (isRequired) {
+						$(this).removeAttr("data-required");
+						$(this).removeClass("required");
+                        var thElement = $(this).parent().prev();
+                        if(thElement.length > 0 && (thElement[0].tagName == "TH" || thElement[0].tagName == "th")) {
+                            if ($(this).attr("title") != undefined) {
+                                thElement.html(thElement.text().replace(/\*/g, ""));
+                            }
+                        }
+						if (clearValue) {
+							$(this).val("");
+							$(this).attr("disabled", "disabled");
+						}
+					}
+				}
+			});
+		}
+	}
+	
+	$.fn.makeHiddenTag = function(options) {
+		options = options || [];
+		var inputHTML = "\n";
+		for (var i = 0 ; i < options.length ; i++) {
+			if (this.find("#" + options[i].id).length == 0) {
+				inputHTML += "<input type='hidden' id='"+ options[i].id +"' name='"+ options[i].id +"' value='"+ options[i].value +"' />";
+			} else {
+				this.find("#" + options[i].id).val(options[i].value);
+			}
+		}
+		$(this).append(inputHTML);
+		
+	}
+	
+	$.fn.makeFormHiddenTag = function(targetForm) {
+		var options = [];
+		$(targetForm).find($.validator.searchType).each(function() {
+			var element = $(this);
+			if (element.val() == "")
+				return;
+			options.push({id:element.attr("id"), value:element.val()})
+		});
+		this.makeHiddenTag(options);
+	}
+	
+})(jQuery);
+
+jQuery.extend({
+	getCaretPosition: function(o) {
+	    if (o.createTextRange) {
+	        var r = document.selection.createRange().duplicate();
+	        r.moveEnd('character', o.value.length);
+	        if (r.text == '') return o.value.length;
+	        return o.value.lastIndexOf(r.text);
+	    } else {
+	    	return o.selectionStart;
+	    }
+	},
+	
+	setCurrency: function(className, intMax, decMax, cbFunc) {
+    	$("." + className).live("keydown", function(event) {
+    		var key = event.keyCode;
+    		var caretPos = $.getCaretPosition(this);
+    		var ret = false;
+    		var val = $(this).val();
+    		
+    		// Check Backspace(8), Tab(9) Home(35), End(36), Left(37)/Right(39) Arrow, Del(46) 
+    		if (key == 8 || key == 9 || key == 35 || key == 36 || key == 37 || key == 39 || key == 46) {
+    			ret = true; 
+    		} else if ((key >= 48 && key <= 57) || (key >= 96 && key <= 105)) {      // Check Number(48~57, 96~105)
+    			var commaIdx = val.indexOf(".");
+    			
+    			if (commaIdx < 0 || commaIdx >= caretPos) {
+    				if (intMax > val.substring(0, (commaIdx < 0 ? val.length : commaIdx)).length) ret = true;
+    			} else {
+    				if ( (val.length - commaIdx) <= decMax) ret = true;
+    			}			
+    		} else if ((key == 190 || key == 110) && val.indexOf(".") < 0 && caretPos > 0) {   // Check '.'(190)
+    			ret = true;
+    		}
+    		
+    		return ret;
+        });
+    	
+        $("." + className).live("blur", function(event) {
+        	if ($.trim($(this).val()) == '' || $.trim($(this).val()) == '0') $(this).val("0.00");
+        	if (cbFunc != null) cbFunc();
+        });
+    },
+    
+    setNumberFormat: function(num, precision, fixed) {
+    	if (num === undefined) return "";
+    	
+    	precision = precision || 2;
+    	fixed = fixed || 2;
+    	num = Math.round(num * Math.pow(10, precision)) / Math.pow(10, precision);
+    	num = (num.toFixed(fixed)+"");
+    	var len = num.indexOf(".") < 0 ? num.length : num.indexOf(".");
+    	
+    	for (var i=len; i>(num.indexOf("-") < 0 ? 0 : 1); i-=3) {
+    		if (i < len) num = num.substring(0, i) + "," + num.substring(i, num.length);
+    	}
+    	
+    	return num;
+    }
+});
+
+document.onkeydown = function () { 
+    var backspace = 8; 
+    var t = document.activeElement; 
+    if (event.keyCode == backspace) { 
+        if (t.tagName == "SELECT" || (t.tagName == "INPUT" && t.getAttribute("readonly") == "readonly")) {
+            event.returnValue = false;
+        }
+    } 
+}
+
+
+//모바일용 Ajax 파일 다운로드
+jQuery.download = function(url, data){
+	var downloadUtilURL = url+"?fileSeq="+data;
+	var param = {
+			 "confirm" : true
+			,"callBackMethod" : "downloadUtilCallBack"
+			,"callBackParam" : {"downloadUtilURL":downloadUtilURL}
+	}
+	layerPopParamMsg($.message.get('message_new_M0003410'),param);
+};
+var downloadUtilCallBack = function(data){
+	location.href = data.downloadUtilURL;
+	//파일 다운로드시 로딩바 삭제
+	$("#divLoading").css({display: "none"});
+	$("#divLoading").remove();
+}

@@ -1,0 +1,421 @@
+var replyOrderBy = "REGORDER";
+var fileExt = ["jpg", "jpeg", "png", "gif", "bmp"];
+
+reply_init = function(params){
+	var replyURI = "/member/comment/commentList.do";
+	$.ajax({
+		type : "POST",
+		url : replyURI,
+		cache: false,
+		data : params,
+		success : function(data) {
+			reply_initCallback(data);
+		},
+		error : function(xhr, status, exception){
+			alert("전송에 실패하였습니다. \n ("+status+")");
+			return false;
+		}
+	});
+};
+reply_initCallback = function(data){
+	$('#replyInit').html(data);
+
+	if(replyOrderBy == "LIKEORDER"){
+		$("#replyLikeBtn").addClass("on");
+		$("#replyRegBtn").removeClass("on");
+	}else{
+		$("#replyRegBtn").addClass("on");
+		$("#replyLikeBtn").removeClass("on");
+	}
+
+	$("#comtSpan").text($("#totalReplyCount").text());
+
+	$(".brd_reply_list > li").brdReply(); // 답글 접기 / 펼치기
+};
+
+reply_refresh = function(orderType){
+	if(orderType != null){
+		replyOrderBy = orderType;
+	}
+
+	var params = "studyItemSeq=" + $("#studyItemSeq").val();
+	params += "&studyItemTypeCode=" + $("#studyItemTypeCode").val();
+	params += "&studyItemSubmitSeq=" + $("#studyItemSubmitSeq").val();
+	params += "&teamSeq=" + $("#teamSeq").val();
+	params += "&boardSeq=" + $("#boardSeq").val();
+	params += "&isStudyRoom=" + $("#isStudyRoom").val();
+	params += "&orderBy=" + replyOrderBy;
+
+	reply_init(params);
+};
+
+reply_txtCount = function(){
+	var str = $("#description").val();
+	$("#replyTxtCount").text(str.length);
+};
+
+reply_fileChange = function(id, input){
+	var checkImag = reply_checkImage(input);
+	if(!checkImag){
+		alert("등록 가능한 이미지가 아닙니다.");
+		$("#"+id).val("");
+		return;
+	}
+
+	$("#replyImgLI"+id).show();
+	if (input.files && input.files[0]) {
+		var reader = new FileReader();
+		reader.onload = function (e) {
+			$('#replyImg'+id).attr('src', e.target.result);
+		};
+		reader.readAsDataURL(input.files[0]);
+	}
+
+	reply_addImageHTML(id);
+};
+
+reply_checkImage = function(input){
+	var checkImag = false;
+	var ext = $(input).val();
+	var index = ext.lastIndexOf(".")+1;
+	var name = ext.substr(index);
+	for(var i=0; i<fileExt.length; i++){
+		if(fileExt[i] == name){
+			checkImag = true;
+			break;
+		}
+	}
+	return checkImag;
+};
+
+reply_addImageHTML = function(id){
+	$("#replyFileLI"+id).hide();
+	var liCount = $("#replyUL li button").length;
+	var lastID = $("#replyUL li:last").attr("id");
+	lastID = lastID.replace("replyFileLI", "");
+	lastID = parseInt(lastID)+1;
+	if(liCount == 6){
+		return;
+	}
+
+	var addHTML = '';
+	addHTML += '<li id="replyImgLI'+lastID+'">';
+	addHTML += '	<img id="replyImg'+lastID+'" src="" alt="">';
+	addHTML += '	<button type="button" class="picdel" onclick="reply_fileDelete('+lastID+'); return false;">';
+	addHTML += '		<img src="'+memberImgPath+'/icon/icon_x.png" alt="사진삭제">';
+	addHTML += '	</button>';
+	addHTML += '</li>';
+	addHTML += '<li id="replyFileLI'+lastID+'" class="picadd">';
+	addHTML += '	<label for="'+lastID+'">파일추가</label>';
+	addHTML += '	<input type="file" id="'+lastID+'" name="comtFile" onchange="reply_fileChange('+lastID+', this); return false;">';
+	addHTML += '</li>';
+
+	$("#replyUL").append(addHTML);
+	$("#replyImgLI"+lastID).hide();
+};
+
+reply_attaFileChange = function(row, id, input){
+	var checkImag = reply_checkImage(input);
+	if(!checkImag){
+		alert("등록 가능한 이미지가 아닙니다.");
+		$("#"+id).val("");
+		return;
+	}
+
+	$("#replyAttaImgLI"+id).show();
+	if (input.files && input.files[0]) {
+		var reader = new FileReader();
+		reader.onload = function (e) {
+			$('#replyAttaImg'+id).attr('src', e.target.result);
+		};
+		reader.readAsDataURL(input.files[0]);
+	}
+
+	reply_addAttaImageHTML(id, row);
+};
+reply_addAttaImageHTML = function(id, row){
+	var lastID = $("#replyAttaUL"+row+" li:last").attr("id");
+	var lastIDNum = lastID.replace("replyAttaFileLI", "");
+	$("#replyAttaImgLI"+lastIDNum).show();
+	$("#replyAttaFileLI"+lastIDNum).hide();
+	lastIDNum = lastIDNum.substr(lastIDNum.indexOf("_")+1);
+	lastID = parseInt(lastIDNum)+1;
+
+	var addHTML = '';
+	addHTML += '<li id="replyAttaImgLI'+row+"_"+lastID+'" style="display:none;">';
+	addHTML += '	<img id="replyAttaImg'+row+"_"+lastID+'">';
+	addHTML += '	<button type="button" class="picdel" onclick="reply_attaFileDelete(\''+row+'_'+lastID+'\'); return false;">';
+	addHTML += '		<img src="'+memberImgPath+'/icon/icon_x.png" alt="사진삭제">';
+	addHTML += '	</button>';
+	addHTML += '</li>';
+	addHTML += '<li id="replyAttaFileLI'+row+"_"+lastID+'" class="picadd">';
+	addHTML += '	<label for="'+row+'_'+lastID+'">파일추가</label>';
+	addHTML += '	<input type="file" id="'+row+'_'+lastID+'" name="comtFile" onchange="reply_attaFileChange('+row+', \''+row+'_'+lastID+'\', this); return false;">';
+	addHTML += '</li>';
+
+	$("#replyAttaUL"+row).append(addHTML);
+};
+
+var imgIndex = 0;
+reply_imageDelete = function(index, seq, ctntSeq){
+	if(!confirm($.message.get('message_q001'))){
+		return;
+	}
+	imgIndex = index;
+	var param = "fileSeq=" + seq;
+	param += "&ctntSeq=" + ctntSeq;
+	common.ajaxCallbackSubmit("/file/ajax/commentImageDelete.do", param, reply_imageDeleteCallBack);
+};
+reply_imageDeleteCallBack = function(json){
+	alert("삭제되었습니다.");
+	$("#replyAttaImgLI"+imgIndex).remove();
+};
+
+var likeIndex = 0;
+reply_clickLike = function(comtSeq, index){
+	likeIndex = index;
+
+	$("#comtSeq"+index).val(comtSeq);
+
+	var options = {
+		url : "/member/comment/ajax/commentLikeInsert.do",
+		formId : "replyForm"+index,
+		returnMessage : "show",
+		callbackFunc : reply_clickLikeCallBack,
+		validation : true
+	}
+	common.submit(options);
+};
+reply_clickLikeCallBack = function(json){
+	if(json.input.reglikeYN == 1){
+		alert("이미 추천하셨습니다.");
+		return;
+	}
+	reply_refresh(replyOrderBy);
+};
+
+reply_fileDelete = function(id){
+	$("#replyImgLI"+id).remove();
+	$("#replyFileLI"+id).remove();
+	var liCount = $("#replyUL li button").length;
+	if(liCount == 5){
+		var lastID = $("#replyUL li:last").attr("id");
+		reply_addImageHTML(lastID);
+	}
+};
+
+reply_attaFileDelete = function(id){
+	$("#replyAttaImgLI"+id).remove();
+	$("#replyAttaFileLI"+id).remove();
+}
+
+reply_changeReplyModifyMode = function(idx, depth){
+	var btnSize = $("#replyAttaUL"+idx).find("button").length;
+	if(btnSize > 1){
+		for(var i=1; i<btnSize; i++){
+			$("#xIconBtn"+idx+""+i).show();
+		}
+	}
+	$("#replCmmtContsArea"+idx).hide();
+	$("#replCmmtContsText"+idx).show();
+	$("#modifyBtn"+idx).hide();
+	$("#saveBtn"+idx).show();
+	$("#cancelBtn"+idx).show();
+	if(depth == '1'){
+		var lastImgID = $("#replyAttaUL"+idx+" li:last").attr("id");
+		lastImgID = lastImgID.replace("replyAttaFileLI", "");
+		$("#replyAttaFileLI"+lastImgID).show();
+	}
+};
+reply_changeReplyModifyCancel = function(idx, depth){
+	var btnSize = $("#replyAttaUL"+idx).find("button").length;
+	if(btnSize > 1){
+		for(var i=1; i<btnSize; i++){
+			$("#xIconBtn"+idx+""+i).hide();
+		}
+	}
+	$("#replCmmtContsArea"+idx).show();
+	$("#replCmmtContsText"+idx).hide();
+	$("#modifyBtn"+idx).show();
+	$("#saveBtn"+idx).hide();
+	$("#cancelBtn"+idx).hide();
+	if(depth == '1'){
+		var lastImgID = $("#replyAttaUL"+idx+" li:last").attr("id");
+		lastImgID = lastImgID.replace("replyAttaFileLI", "");
+		$("#replyAttaFileLI"+lastImgID).hide();
+	}
+};
+
+reply_changeReplyModifySave = function(idx, comtSeq){
+	$("#comtSeq"+idx).val(comtSeq);
+	$("#description"+idx).val($("#replComtContsLoop"+idx).val());
+
+	var options = {
+		url : "/member/comment/ajax/commentUpdate.do",
+		formId : "replyForm"+idx,
+		returnMessage : "show",
+		callbackFunc : reply_changeReplyModifySaveCallBack,
+		validation : true
+	}
+	if(confirm($.message.get('message_q000'))){
+		common.submit(options);
+	}
+
+};
+reply_changeReplyModifySaveCallBack = function(json){
+	reply_refresh(replyOrderBy);
+};
+
+var delIndex = 0;
+var delReplySeq = "";
+var delRow = "";
+reply_delete = function(comtSeq, index, row){
+	if(!confirm($.message.get('message_q001'))){
+		return;
+	}
+	delIndex = index;
+	delReplySeq = comtSeq;
+	delRow = row;
+
+	var param = "comtSeq=" + comtSeq;
+	common.ajaxCallbackSubmit("/member/comment/ajax/commentDelete.do", param, reply_deleteCallBack);
+};
+reply_deleteCallBack = function(json){
+	$("#child"+delIndex).remove();
+	var replySize = $("#replyCountTxt"+delRow).text();
+	$("#replyCountTxt"+delRow).text((parseInt(replySize)-1));
+	if(delIndex == delRow){
+		$("#commentLI"+delRow).remove();
+		var totalCount = $("#totalReplyCount").text();
+		$("#totalReplyCount").html(parseInt(totalCount)-1);
+	}
+
+	$("#comtSpan").text($("#totalReplyCount").text());
+};
+
+reply_comment = function(depth){
+	$("#depth").val(depth);
+	if(depth == 1){
+		var description = $("#description").val();
+		if(description.length < 1){
+			alert("댓글을 입력해 주세요");
+			return;
+		}
+	}
+	$("#replyForm input[name=parentCommSeq]").val("");
+
+	var options = {
+		url : "/member/comment/ajax/commentInsert.do",
+		formId : "replyForm",
+		returnMessage : "show",
+		callbackFunc : reply_commentCallBack,
+		validation : true
+	}
+	common.submit(options);
+
+};
+reply_commentCallBack = function(json){
+	reply_refresh(replyOrderBy);
+};
+
+var paramComtSeq = "";
+var paramIndex = "";
+var saveTextArea = "";
+reply_depthComment = function(comtSeq, index){
+	paramComtSeq = comtSeq;
+	paramIndex = index;
+	var subReply = $("#"+comtSeq+"textarea").val();
+	if(subReply.length < 1){
+		alert("답글을 입력해 주세요");
+		$("#"+comtSeq+"textarea").focus();
+		return;
+	}
+	saveTextArea = subReply;
+	$("#depth").val(2);
+	$("#parentCommSeq").val(comtSeq);
+	$("#replDescription").val(subReply);
+	$("#"+comtSeq+"textarea").val("");
+	var options = {
+		url : "/member/comment/ajax/commentInsert.do",
+		formId : "replyForm",
+		returnMessage : "show",
+		callbackFunc : reply_depthCommentCallBack,
+		validation : true
+	}
+	common.submit(options);
+};
+reply_depthCommentCallBack = function(json){
+	var myName = $("#myName").val();
+	var myImg = $("#myImg").val();
+	var lastReply = $("#commentLI"+paramIndex).find(".childDiv:last");
+	var replyCount = $("#commentLI"+paramIndex).find(".childDiv").length;
+	$("#replyCountTxt"+paramIndex).text(replyCount+1);
+
+	var addReply = '';
+	addReply += '<div id="child'+json.input.comtSeq+(parseInt(paramIndex)+1)+'" class="brd_reply_comm childDiv on">';
+	addReply += '	<div class="comm">';
+	addReply += '		<div class="thumb">';
+
+	addReply += '<img src="data:image/jpeg;base64, '+myImg+'" class="thumb" />';
+	/*if(myImgSeq.length > 0){
+		addReply += '<img src="data:image/jpeg;base64, '+myImg+'" class="thumb" />';
+	}else{
+		addReply += '<img src="/resources/member/images/img/img_noimg.jpg" class="thumb">';
+	}*/
+	addReply += '		</div>';
+    addReply += '		<div class="commentCss">';
+	addReply += '			<span class="name">'+myName+'</span> | '+ getNowFullDate();
+	addReply += '			<p class="para" style="padding-top: 10px; display: block;">';
+	addReply += '				<pre id="replCmmtContsArea'+json.input.comtSeq+(parseInt(paramIndex)+1)+'" style="white-space: pre-wrap;">' + saveTextArea + '</pre>';
+	addReply += '			</p>';
+	addReply += '			<div class="txtin" id="replCmmtContsText'+json.input.comtSeq+(parseInt(paramIndex)+1)+'" style="padding-top: 10px; display: none;">';
+	//addReply += '				<span class="icon_left"></span>';
+	addReply += '				<textarea id="replyTextarea'+json.input.comtSeq+(parseInt(paramIndex)+1)+'" style="width:448px;height:60px;">'+saveTextArea+'</textarea>';
+	addReply += '			</div>';
+	addReply += '		</div>';
+	addReply += '	</div>';
+	addReply += '	<div class="brd_reply_menu">';
+	addReply += '		<div class="fr">';
+	addReply += '			<button id="modifyBtn'+json.input.comtSeq+(parseInt(paramIndex)+1)+'" type="button" class="btnReplyModify" onclick="reply_changeReplyModifyMode(\''+json.input.comtSeq+(parseInt(paramIndex)+1)+'\', \'2\')">수정</button>';
+	addReply += '			<button id="saveBtn'+json.input.comtSeq+(parseInt(paramIndex)+1)+'" type="button" class="btnReplyModify" onclick="reply_changeReplyDepth2ModifySave(\''+json.input.comtSeq+'\', \''+json.input.comtSeq+(parseInt(paramIndex)+1)+'\')" style="display:none;">저장</button>';
+	addReply += '			<button id="cancelBtn'+json.input.comtSeq+(parseInt(paramIndex)+1)+'" type="button" class="btnReplyModify" onclick="reply_changeReplyModifyCancel(\''+json.input.comtSeq+(parseInt(paramIndex)+1)+'\', \'2\')" style="display:none;">취소</button>';
+	addReply += '			<a onclick="reply_delete(\''+json.input.comtSeq+'\', \''+json.input.comtSeq+(parseInt(paramIndex)+1)+'\', \''+paramIndex+'\'); return false;">삭제</a>';
+	addReply += '		</div>';
+	addReply += '	</div>';
+	addReply += '</div>';
+
+	if(replyCount == 0){
+		$("#replyComment"+paramIndex).after(addReply);
+	}else{
+		$(lastReply).after(addReply);
+	}
+
+};
+
+var modifyIndex = "";
+reply_changeReplyDepth2ModifySave = function(comtSeq, idx){
+	modifyIndex = idx;
+	var replCmmtContsText = $("#replyTextarea"+idx).val();
+	var url = "/member/comment/ajax/commentDepthUpdate.do";
+	var param = "comtSeq=" + comtSeq;
+	param += "&description=" + replCmmtContsText;
+	common.ajaxCallbackSubmit(url, param, reply_changeReplyDepth2ModifySaveCallBack);
+}
+reply_changeReplyDepth2ModifySaveCallBack = function(json){
+	alert("수정하였습니다.");
+	var modifyText = $("#replyTextarea"+modifyIndex).val();
+	$("#replCmmtContsArea"+modifyIndex).html(modifyText);
+	reply_changeReplyModifyCancel(modifyIndex, 2);
+}
+
+getNowFullDate = function() {
+	var date = new Date();
+	var yyyy = date.getFullYear();
+	var MM = date.getMonth()+1 < 10 ? "0" + (date.getMonth()+1) : date.getMonth()+1;
+	var dd = date.getDate() < 10 ? "0" + date.getDate() : date.getDate();
+	var hh = date.getHours();
+	var mm = date.getMinutes();
+	var ss = date.getSeconds();
+
+	return yyyy + "-" + MM + "-" + dd + " " + hh + ":" + mm + ":" + ss;
+};

@@ -1,0 +1,268 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"%>
+<c:if test="${empty sessionScope.member}"><c:redirect url="/" /></c:if>
+<html>
+	<head>
+		<link type="text/css" rel="stylesheet" href="${memberMobileCssPath}/posco-lx-player.css?ver=20210325">
+	</head>
+	<body>
+		<%-- 동영상 플레이어 --%>
+		<div class="container">
+			<video id="lx-player" style="width:100%; height:100%;"
+				class="video-js bubble"
+				controls
+				<c:if test="${param.isAutoPlay eq 'Y'}">
+				autoplay
+				</c:if>
+				preload="auto"
+				playsinline
+				webkit-playsinline
+				data-setup='{"controlBar": {"pictureInPictureToggle": false} }'>
+				<p class="vjs-no-js"><spring:message code="M0003838" text="영상 로드중 문제가 발생하였습니다. 영상을 시청하시려면 자바스크립트를 활성화해주세요."/></p>
+			</video>
+		</div>
+		
+		<%-- 추가된 audio tag --%>
+		<div class="audio-div" <c:if test="${param.ctntTypeCode ne 'ADIO'}">style="display: none;"</c:if>>
+		    <div class="img-wrapper">
+		        <img src="${memberMobileImgPath}/thumbnail-audio.png" alt="" width="100%">
+		    </div>
+		    <audio id="lx-audio" class="lx-player-audio" preload="auto"></audio>
+		</div>
+		<%-- 추가된 audio tag --%>		
+		
+		<c:choose>
+			<c:when test="${param.ctntTypeCode eq 'YUTB'}">
+				<script type="text/javascript" src="${memberMobileNewScriptPath}/posco-lx-player-with-youtube.js?ver=20220314"></script>
+			</c:when>
+			<c:otherwise>
+				<script type="text/javascript" src="${memberMobileNewScriptPath}/posco-lx-player.js?ver=20220314"></script>
+			</c:otherwise>
+		</c:choose>
+		<script type="text/javascript" src="${commonScriptPath}/DateUtil.js"></script>
+		<script type="text/javascript">
+			var href		= window.location.href;
+			var pathname	= window.location.pathname;
+			var host		= href.replace(pathname,"").replace("#none;","").replace("#none","");
+			
+		    const contentTypeCode = '<c:out value="${param.ctntTypeCode}"/>';	//콘텐츠 타입 (VOD/ADIO/YUTB)
+		    //console.log("############### contentTypeCode : " + contentTypeCode);
+		    
+			//진도저장 URL
+			const slsUrl		= host + "<c:url value='/member/onlineCourse/lxPlayer/playdata.do' />";
+			//진도저장 시간간격(초) : pium과정(622092)은 db부하로 20초에 한번씩 
+			const slsInterval = ('<c:out value="${param.courseSeq}"/>'=='622092') ? 20 : 10;
+			
+			//자동재생여부
+			const booleanAutoPlay 	= ('<c:out value="${param.isAutoPlay}"/>'=='Y') ? true : false;		
+			//console.log("##### autoPlay="+booleanAutoPlay);
+			
+			// 동영상일 경우 완료 콜백 함
+			var video_complete_callback = function () {
+// 			    console.log('### 동영상 완료 콜백 !!!');
+			    // 비디오 영상 길이 구하기
+			    var duration = Math.floor(lxPlayer.duration());
+			    // 비디오 현재 시점 구하기
+			    var currentTime = Math.floor(lxPlayer.currentTime());
+				// callback 함수 호출			
+			    sendRequest(currentTime, duration);
+			};
+
+			// 오디오일 경우 완료 콜백 함수
+			var audio_complete_callback = function () {
+// 			    console.log('### 오디오 완료 콜백 !!!');
+			    // audio 태그
+			    var audioElement = document.getElementById('lx-audio');
+			    // 오디오 길이 구하기
+			    var duration = Math.floor(audioElement.duration);
+			    // 현재 재생 시간 구하기
+			    var currentTime = Math.floor(audioElement.currentTime);
+			    // callback 함수 호출
+			    sendRequest(currentTime, duration);
+			};
+			
+			// 진도율 계산 코드 및 http 통신 코드는 동영상 콜백 함수와 같습니다.
+			function sendRequest(currentTime, duration) {
+ 			    console.log('### sendRequest !!!');
+			    // 진도율 계산
+			    //var progress = Math.floor(currentTime / duration) * 100;
+			
+			    // 수강 시간
+			    var diffTime = currentTime - options.time;
+			    var learningTime = diffTime >= 0 ? diffTime : currentTime;
+			
+			    // 실제 수강 시간(누적)
+			    var actualLearningTime = new Date() - prevReq;
+				
+			    // 요청 보내는 데이터
+			    var data = {
+			        progress			: 100,
+			        lmsparam			: options.lmsParam,
+			        state				: 't',
+			        finalLearningLc		: currentTime,
+			        actualLearningTime	: getMiliSecToTime(actualLearningTime),	//DateUtil.js
+			        learningTime		: learningTime
+			    };
+			    //console.log("############# 변경된 로직으로 호출 !!");
+			    
+		        // http 요청 보내기
+		        const xhrPost = new XMLHttpRequest();
+		        xhrPost.onload = function() {
+		          if (xhrPost.status === 201 || xhrPost.status === 200) {
+		            // 응답 성공
+ 		        	console.log("### 응답성공 !!!!");
+		        	<c:if test="${param.ctntTypeCode eq 'VOD' and param.eduFinishYn eq 'N'}">
+		        	refreshContent();
+		        	</c:if>
+		        	<%-- 연속재생이 활성화된 경우 - 다음 학습콘텐츠가 동영상 타입이면 자동 재생 --%>
+					top.continueNextStudy();		            
+		          } else {
+					console.log("### error !!!!");
+		            console.error(xhrPost.responseText);
+		          }
+		        }
+		        xhrPost.open('POST', options.slsUrl);
+		        xhrPost.setRequestHeader('Content-Type', 'application/json');
+		        xhrPost.send(JSON.stringify(data));
+			}
+			
+			var options =
+			{
+			    url				: '<c:out value="${param.url}"/>',						// 동영상 스트리밍 url
+			    email			: '<c:out value="${param.email}"/>',                    // x-api email 정보
+			    name 			: '${USER_ID}',                    						// x-api user id 정보
+			    lrsUrl			: '${LRS_URL}',											// x-api LRS Url
+			    baseurl			: host.concat('${BASE_URL}'),							// x-api ActivityId(사용자의 행동 패턴 구분값)
+			    stateId			: host.concat('${STATE_ID}'),							// x-api stateId(X-API를 구분할 수 있는 고유한 상태값)
+			    content_name	: '<c:out value="${param.contentName}"/>',              // 동영상 콘텐츠 제목
+			    description		: '<c:out value="${param.contentName}"/>',              // 동영상 콘텐츠 설명
+				<%-- 교육기간이 종료되지 않은 경우에만 처리 --%>			    
+			    <c:if test="${param.eduFinishYn eq 'N'}">
+			    slsUrl			: slsUrl,												// 학습 진척사항 전송 url (10초)
+			    slsInterval		: slsInterval,
+			    lmsParam 		: '<c:out value="${param.lmsParam}"/>',
+			    </c:if>
+			    time			: <c:out value="${param.time}"/>,                       // 최초 동영상 콘텐츠 시작 시간. 초단위 (유튜브와 같은 스트리밍 서비스는 적용 불가)
+            	auto_play		: booleanAutoPlay,
+            	muted			: false,
+				playback_rate	: [1,1.25,1.5,1.75,2],									// 동영상 배속 설정 옵션입니다. 예시대로라면 1,2,3,8 배속을 지원합니다.
+				right_click_lock: {
+					isLocked: true,																// 마우스 우클릭 방지 기능 사용 여부를 결정합니다. true: 사용 false: 미사용
+					guide	: '<spring:message code="M0003845" text="마우스 오른쪽 클릭은 금지합니다."/>'	// 마우스 우클릭이 발생할 때 사용자에게 보여줄 문구입니다.
+				},
+	            // 영상 재생 완료 콜백함수 구현부
+	            complete_callback: video_complete_callback			    
+			};
+			
+		    // url 포멧을 확인하여 콜백함 수 변경 및 적용
+		    options['complete_callback'] = /\.mp3/g.test(options.url) ? audio_complete_callback : video_complete_callback;
+		    
+// 			console.log(options);
+			
+			// 무조건 초기화 한번 해줘야함.		
+		    player_init(options);
+		    
+		    var video = (contentTypeCode == 'ADIO') ? document.getElementsByTagName("audio")[0] : document.getElementsByTagName("video")[0];
+		    
+		    <%-- 교육기간이 종료되지 않은 경우에만 처리 --%>
+		    <%-- VOD 만 해당 이벤트 처리가 됨   --%>
+		    <c:if test="${param.ctntTypeCode eq 'VOD' and param.eduFinishYn eq 'N'}">
+		    <%-- 학습콘텐츠 진도율 갱신 --%>
+		    var refreshContent = function() {
+		    	top.refreshContentStudyStatus(contentTypeCode);
+		    }
+		    
+		    <%-- [플레이] 이벤트 --%>
+		    <%-- play 이벤트는 굳이 처리할 필요 없음. timeupdate 이벤트로 처리하면 됨. --%>
+		    <%--
+		    video.addEventListener("play", function(event) {
+		    	console.log("############### 플레이 !!!");
+		    },false);
+		    --%>
+		    
+		    <%-- [일시정지] 이벤트 --%>
+		    video.addEventListener("pause", function(event) {
+// 		    	console.log("############### pause !!!");
+		    	setTimeout(refreshContent,1 * 1000);
+		    },false);
+		    
+		    <%-- [재생완료] 이벤트 --%>
+		    video.addEventListener("ended", function(event) {
+// 		    	console.log("############### ended !!!");
+		    	setTimeout(refreshContent,1 * 1000);
+		    },false);
+
+		    var chkIntervalTime = 0;
+		    
+		    <%-- [timeupdate] 즉, 재생중 이벤트 --%> 
+		    video.addEventListener("timeupdate", function(event) {
+		    	var interval = Math.floor(video.currentTime) % slsInterval; // slsInterval : 10초
+		    	<%-- 10초마다 한번씩만 처리하기 위한 조건 --%>
+		    	if(chkIntervalTime!=interval && Math.floor(video.currentTime) > 0 && interval == 0) {
+		    		chkIntervalTime = interval;
+					//console.log("### " + Math.floor(video.currentTime) + "/" + Math.floor(video.duration) + " (초)");
+					// 화면갱신
+					refreshContent();
+		    	} else {
+		    		chkIntervalTime = interval;
+		    	}
+			}, false);
+		    </c:if>
+		    
+		    function lxPlayer_pause() {
+// 		    	console.log("### [IFrame] lxPlayer_pause call !!!");
+		        // 플레이어 정지 메소드
+		    	video.pause();
+		    }
+		
+		    function lxPlayer_start() {
+		    	
+		        // 플레이어 시작 메소드
+		        var tmvar = <c:out value="${param.time}"/>;
+// 		        console.log("### [IFrame] lxPlayer_start call - time="+tmvar);
+		        
+		        lxPlayer.currentTime(tmvar);
+		    	lxPlayer.muted(true);
+		    	lxPlayer.play();
+		        lxPlayer.muted(false);
+		    }
+		    <%-- 
+			  lxPlayer.ready(function(){
+			    	console.log("###### ready");
+			    	
+			    	<c:if test="${param.movContinueYn eq 'Y'}">
+				    	<c:choose>
+						    <c:when test="${param.ctntTypeCode eq 'ADIO'}">
+						    	//top.showMovContinue();
+						    	console.log("### [오디오]타입은 이어보기 지원안됨.");
+						    </c:when>
+						    <c:otherwise>
+						    console.log("### [비디오]이어보기 메세지창 호출");
+						    	top.showMovContinue();
+						    </c:otherwise>
+					    </c:choose>
+				    </c:if>
+		    });--%>
+
+		    //0초 되돌아가기
+		    function lxPlayer_move() {
+// 		    	console.log("### [IFrame] lxPlayer_move - 0");
+		    	lxPlayer.currentTime(0);
+		    	video.play();
+		    }
+		    
+		    <%-- 이어보기인 경우
+		    <c:if test="${param.movContinueYn eq 'Y'}">
+		    	<c:choose>
+				    <c:when test="${param.ctntTypeCode eq 'ADIO'}">
+				    	//top.showMovContinue();
+				    	console.log("### [오디오]타입은 이어보기 지원안됨.");
+				    </c:when>
+				    <c:otherwise>
+				    	top.showMovContinue();
+				    </c:otherwise>
+			    </c:choose>
+		    </c:if> --%>
+
+		</script>
+	</body>
+</html>		    

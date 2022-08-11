@@ -1,0 +1,375 @@
+/*!
+ * jQuery dataTable Extend Plugin
+ */
+$.fn.dataTable.ext.errMode = 'throw';
+var dtGridMap = new Map();
+(function ($) {
+	$.fn.dtGrid = function (options, btn) {
+		var _id = $(this).attr("id");
+		var jQueryContext = this;
+		var dtGrid = (dtGridMap.get(_id));
+		if (dtGrid == undefined) {
+			dtGrid = new DtGrid(jQueryContext, options, btn);
+			if (options) {
+				dtGridMap.put(_id, dtGrid);
+			}
+		} else {
+			var isDataTable = $.fn.DataTable.isDataTable($(this));
+			if (!isDataTable) {
+				dtGridMap.remove(_id);
+				dtGrid = new DtGrid(jQueryContext, options, btn);
+				if (options) {
+					dtGridMap.put(_id, dtGrid);
+				}
+			}
+		}
+        return dtGrid;
+    };
+
+    var DtGrid = function (jQueryContext, options, btn) {
+    	var buttonType = "";
+    	var _settings = {
+			data : ""
+			, processing: true
+			, serverSide: true
+			, scrollY: null
+			, scrollCollapse: true
+			, defaultScrollY: "300px"
+			, scrollX: true
+			, makeHeader: false
+			, searching: false
+			, select: true
+			, order: []
+			, columnDefs : []
+			, columns : []
+			, pageLength :  25
+			, pagingType : "full_numbers"
+			, paging : true
+			, language : {
+				url: documentHome +"/resources/script/web/admin/dataTables/i18n/"+ localeLang +".json",
+				"loadingRecords": "<img src='/resources/images/web/admin/common/ajax-loader.gif'>",
+				"processing":     "<img src='/resources/images/web/admin/common/ajax-loader.gif'>",
+			}
+    		, autoWidth : true
+			, width : null
+			, height : null
+			, checkAllId : null
+		};
+
+    	var $this = jQueryContext;
+    	var _id = $this.attr("id");
+
+    	var _btn = "top"; // both, top, bottom
+
+    	this.init = function (jQueryContext, options, btn) {
+			_settings = $.extend(_settings, options);
+			if (_settings.columns != null && _settings.columns.length > 0) {
+				for (var i = 0; i < _settings.columns.length; i++) {
+					_settings.columns[i].defaultContent = "";
+				}
+			}
+
+			if (btn) {
+				if (_btn != null)
+					btn.type = _btn;
+
+				_btn = btn;
+			} else {
+				_btn = null;
+			}
+
+        	buildGrid();
+    	}
+
+    	//public helpers
+    	this.options;
+    	this.btn;
+    	if (options)
+    		this.options = options;
+
+    	if (btn)
+    		this.btn = btn;
+
+		this.draw = function () {
+			$this.DataTable().draw(false);
+		};
+
+		this.reload = function(options, btn) {
+			var isDataTable = $.fn.DataTable.isDataTable($this);
+			if (isDataTable) {
+				var tbl = $this.DataTable();
+				tbl.ajax.reload(makeInfo);
+			} else {
+				jQueryContext.dtGrid(options, btn)
+			}
+		}
+
+		this.dataReload = function() {
+			var tbl = $this.DataTable();
+			tbl.ajax.reload(makeInfo);
+		}
+
+		this.adjust = function() {
+			var tbl = $this.DataTable();
+			tbl.columns.adjust().draw();
+		}
+
+		this.getDataTable = function() {
+			return $this.DataTable();
+		}
+
+		this.getSelectedData = function(callbackFunc) {
+			var tbl = $this.DataTable();
+			if(callbackFunc){
+				$this.off("click").on("click", 'tr', function(data){
+					var data = tbl.row(this).data();
+					callbackFunc(data);
+				});
+			}
+		}
+        // checked 된 Row Data
+        this.getCheckedRowData = function (objName, callbackFunc) {
+            var arrTmp = new Array();
+            for (var i = 0; i < $this.DataTable().rows().nodes().length; i++) {
+                if ($this.find("[name=" + objName + "]").eq(i).prop("checked")) {
+                    var rowMap = new Map();
+                    var tmpMap = new Map();
+                    var tmpRowData = $this.DataTable().row(i).data();
+                    rowMap.putAll(tmpRowData);
+                    var obj = $this.DataTable().rows(i).nodes();
+                    $(obj).find("input,select").each(function () {
+                        if ($(this).attr("type") == "text" || $(this)[0].tagName.toLowerCase() == "select") {
+                            tmpMap.put($(this).attr("name"), $(this).val());
+                            rowMap.put($(this).attr("name"), $(this).val());
+
+                            //console.log( i + "." + $(this).attr("name") + " : " + $(this).val() + " : " +  JSON.stringify(tmpMap) );
+                        }
+                    });
+                    //console.log( i + "." + "tmpMap = " + JSON.stringify(tmpMap) );
+                    //console.log( i + "." + "rowMap = " + JSON.stringify(rowMap.map) );
+                    arrTmp.push(rowMap.map);
+                    //console.log("*****************************");
+                }
+            }
+            //console.log( "arrTmp = " + JSON.stringify(arrTmp) );
+            if (callbackFunc) {
+                callbackFunc(arrTmp);
+            }
+            return arrTmp;
+        };
+
+		this.getCheckData = function(callbackFunc) {
+			var data = new Array();
+			$this.find("input[data-checkAll='true']:checked").each(function() {
+				data.push($(this).val());
+			})
+			if(callbackFunc){
+				callbackFunc(data);
+			}
+			return data;
+		}
+
+		this.destroy = function(deleteMapCache) {
+			var isDataTable = $.fn.DataTable.isDataTable($this);
+			if (isDataTable) {
+				$this.DataTable().destroy();
+				$this.empty();
+				$("div[data-button='" + _id + "']").remove();
+			}
+
+			dtGridMap.remove(_id);
+		}
+
+		this.remove = function(key) {
+			var isDataTable = $.fn.DataTable.isDataTable($this);
+			if (isDataTable) {
+			   $this.DataTable().rows().nodes().each(function(a,b) {
+				   console.log("test:" + $(a).children().eq(0).text());
+				   if($(a).children().eq(0).text() == key){
+					  table.rows(a).remove();
+					}
+			   });
+			}
+		}
+
+
+		this.getParams = function() {
+			return $this.DataTable().ajax.params();
+		}
+
+		this.getParam = function(key) {
+			var params = $this.DataTable().ajax.params();
+			return params[key] || "";
+		}
+
+		this.getLength = function() {
+			var isDataTable = $this.DataTable();
+			return isDataTable.column( 0 ).data().length;
+		}
+
+		function buildGrid() {
+			var opts = _settings;
+            var table = $this.DataTable({
+				ajax: {
+					  url : opts.url
+					, type : "POST"
+					, data : opts.data
+				}
+				, processing: false
+				, serverSide: opts.serverSide
+				, scrollY: opts.scrollY == null ? opts.defaultScrollY : opts.scrollY
+			//	, scrollCollapse: true
+				, scrollX: opts.scrollX
+				, searching: opts.searching
+				, select: opts.select
+				, order: opts.order
+				, columnDefs: opts.columnDefs
+				, columns: opts.columns
+				, checkAllId : opts.checkAllId
+				, pageLength: opts.pageLength
+				, pagingType: opts.pagingType
+				, paging : opts.paging
+				, language: opts.language
+				, autoWidth : opts.autoWidth
+				, lengthChange: opts.lengthChange == null ? true : opts.lengthChange
+			//	, scrollCollapse: true
+			//	, scroller:       true
+				, deferLoading : opts.deferLoading ? opts.deferLoading : null
+				, initComplete: function () {
+					$(window).resize(function() {
+						resize();
+					});
+                    resize();
+                    makeInfo();
+                    if (typeof(opts.initComplte) === "function") opts.initComplte();
+                }
+				, fnCreatedRow : function(row, data, index) {
+                    if (opts.index != undefined) {
+                        if ($this.DataTable().page.info().recordsTotal) {
+                            if (opts.paging) {
+                                $('td', row).eq(opts.index).html($this.DataTable().page.info().recordsTotal - $this.DataTable().page.info().start - index );
+							} else {
+                                $('td', row).eq(opts.index).html($this.DataTable().page.info().recordsTotal - index);
+                            }
+						} else {
+							$('td', row).eq(opts.index).html(index + 1);
+						}
+					}
+				}
+				, drawCallback : function( settings ) {
+					if (opts.checkAllId != null) {
+						if(typeof opts.checkAllId == "string"){
+							$this.check(opts.checkAllId, $this.find("input[data-checkAll='true']:not(:disabled)"));
+						} else {
+							for(var i = 0; i < opts.checkAllId.length; i++){
+								$this.check(opts.checkAllId[i], $this.find("input[data-" + opts.checkAllId[i] + "='true']"));
+							}
+
+						}
+					}
+					//$.fn.scrnAuthCheck(menuAuthInfo);
+
+				}
+
+		    });
+	//		new $.fn.dataTable.FixedColumns(table);
+			if (_btn)
+				makeButton();
+		}
+
+		function makeInfo() {
+            if (_settings.paging == false) {
+                var info = $this.fnSettings().oLanguage.info.replace(/_TOTAL_/g, $this.DataTable().column( 0 ).data().length);
+                $this.parents('.dataTables_scroll').next().html(info);
+            }
+		}
+
+		function resize() {
+			if (_settings.scrollY == null) {
+				var content = $('#content').outerHeight() - ($('.content_inner').outerHeight() - $this.parents('.dataTables_scrollBody').outerHeight());
+			/*	var title  = $('.contents_title').outerHeight();
+				var search  = $('.conts_search').outerHeight();
+				var gridHead = $this.parents('.dataTables_scrollBody').prev().outerHeight();*/
+				var gridHeight = content + 45;
+
+				if (_btn != "both")
+					gridHeight -= 50;
+				else if (_btn == "both")
+                    gridHeight -= 100;
+
+				if (_settings.paging == false)
+                    gridHeight -= 23;
+
+		/*		alert($('#content').outerHeight());
+				alert(title);
+				alert(search);
+				alert($this.parents('.dataTables_scrollBody').prev().outerHeight());
+				alert(gridHeight);*/
+
+				$this.parents('.dataTables_scrollBody').css('height', gridHeight + 'px');
+				/*
+				if (gridHeight > 300)
+					$this.parents('.dataTables_scrollBody').css('height', gridHeight + 'px');
+				else
+					$this.parents('.dataTables_scrollBody').css('height', '100%');
+				*/
+			}
+
+//			var width = "";
+//			if (_settings.width) {
+//				width = _settings.width;
+//				$this.parents(".dataTables_wrapper").css("width", width + "px");
+//			}
+//			else if ($this.parents(".lypop_con").length > 0) {
+//			} else {
+//				width = $(".content_inner").width();
+//				$this.parents(".dataTables_wrapper").css("width", width + "px");
+//			}
+
+            // if (_settings.scrollY == null) {
+            //     $this.parents('.dataTables_scrollBody').css('height', '100%');
+            // }
+			$this.dataTable()._fnScrollDraw();
+		}
+
+		function makeButton() {
+			_btn.type = buttonType || _btn.type;
+			var HTML = "<div id='btns_" + _id + "' data-button='" + _id + "' class='fr buttons'>";
+			var buttons = new Array();
+			for(key in _btn.button) {
+				buttons.push(_btn.button[key]);
+			}
+			for (var i = buttons.length ; i > 0 ; i--) {
+				var className = buttons[i -1].className;
+				var position = buttons[i -1].position;
+				var title = buttons[i -1].title;
+				var btnId = (!StringUtil.isEmpty(buttons[i -1].btnId)) ? "id="+buttons[i -1].btnId : "";
+				HTML += "<a data-id='btn_" + (i - 1) + "' title='" + title + "' class='" + className +" " + position + "' " +btnId+ ">" + title + "</a>";
+			}
+
+			HTML += "</div>";
+			if (_btn.type == "both") {
+				$(HTML).insertAfter($this);
+				$(HTML).insertBefore($this);
+			} else if (_btn.type == "top") {
+				$(HTML).insertBefore($this);
+			} else if (_btn.type == "bottom") {
+				$(HTML).insertAfter($this);
+			}
+
+			for (var i = buttons.length ; i > 0 ; i--) {
+				var func = buttons[i -1].func;
+				$("#btns_" + _id + " > a[data-id='btn_" + (i - 1) + "']").click(func);
+			}
+
+		}
+
+		function printButton() {
+			alert("printButton");
+		}
+
+		if (options)
+			this.init(jQueryContext, options, btn);
+
+    }
+}(jQuery));

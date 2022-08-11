@@ -1,0 +1,1643 @@
+/**
+ * PC,Mobile관련 부분 적용
+ */
+
+var common = new Object();
+/*
+ * ################# CONSTANTS ####################
+ */
+
+/*
+ * common
+ */
+/**
+ * @see main.jsp
+ */
+common.CONTEXT_PATH = '';
+/*
+ * for ajax form
+ */
+common.SUCCESS_FLAG = 'SUCCESS_FLAG';
+common.URL_FOR_REDIRECT = 'URL_FOR_REDIRECT';
+common.MSG_FOR_ALERT = 'MSG_FOR_ALERT';
+
+/**
+ * common jquery plugin
+ */
+(function($){
+		/**
+		 * 일반 타입의 폼을 ajaxForm으로 변환
+		 * @param callback callback function
+		 */
+		$.fn.prepareAsyncSubmit = function(callback,_beforeSubmit){
+			var _this = this;
+			var options = {
+					beforeSubmit : function(){
+						try{
+							if(_beforeSubmit() == false){
+								return false;
+							}
+						}catch(e){
+							//ignore
+						}
+						return validation.validate(_this);
+						},
+					inheritedCallback : callback,
+					success: common.asyncResponseHandler
+					};
+			this.ajaxForm(options);
+		};
+		/**
+		 * textarea의 line을 제한한다. 크롬과 익스플로러의 개행문자 처리가 다른거 같음.
+		 * @param limit 라인 수
+		 */
+		$.fn.resolveLineLimit = function(limit){
+			var viewTextTmp = $(this).text().split(/\n(?:\r)?/);
+			var viewText = '';
+
+			_limit = viewTextTmp.length < limit ? viewTextTmp.length : limit;
+			for(var i=0;i<_limit;i++){
+				viewText += viewTextTmp[i] + '\r';
+			}
+			if(viewTextTmp.length>=limit){
+				viewText += '...';
+			}
+			$(this).text(viewText);
+		};
+})(jQuery);
+
+/*
+ * ####################################################################################
+ * 		global functions
+ * ####################################################################################
+ */
+common.eduHistory = function(userId){
+	var params = {
+		"userId" : userId
+	};
+	common.layerPopupParam(contextPath +"/admin/course/popup/studentRegisterEduHistory.do", "#studentHisotryDiv", params);
+};
+
+common.memberCourseHistory = function(userId){
+	var params = {
+			"userId" : userId
+		};
+		common.layerPopupParam(contextPath +"/admin/member/popup/memberCourseHistory.do", "#studentHisotryDiv", params);
+};
+
+common.partnerCourseHistory = function(userId){
+	var params = {
+			"userId" : userId
+		};
+		common.layerPopupParam(contextPath +"/admin/member/popup/partnerCourseHistory.do", "#studentHisotryDiv", params);
+};
+
+/**
+ * CONTEXT PATH가 붙은 URI를 반환한다.
+ * @param uri uri
+ */
+common.getUri = function(uri){
+	return common.CONTEXT_PATH + '/' + uri.replace(/^\//,'');
+};
+
+/**
+ * move page
+ */
+common.goLocationUri = function(uri){
+	window.location.href=uri;
+};
+
+/**
+ * 서버측에 AsyncResponseMap 타입의 callback을 처리할 수 있는 요청을 전송한다.
+ * @see indvmemodiryForm.jsp
+ * @param url Controller url
+ */
+common.asyncRequest = function(uri,json,callback){
+	$.post(uri, json || {}, function(json,status, xhr,inheritedCallback){common.asyncResponseHandler(json,status, xhr,callback);});
+};
+
+common.parseJson = function(json){
+	return JSON.parse(json.replace(/<pre>(.+)<\/pre>$/gi,'$1'));
+};
+
+
+/**
+ * @param strParamName key
+ */
+common.getParameter = function(strParamName) {
+	var arrResult = null;
+	if (strParamName)
+		arrResult = location.search.match(new RegExp("[&?]" + strParamName+"=(.*?)(&|$)"));
+	return arrResult && arrResult[1] ? arrResult[1] : null;
+ };
+
+ /**
+  * get JSON from parameters in uri
+  */
+common.createObjFromURI = function(uri) {
+	uri = uri.replace(/^.+\?/, '');
+	var chunks = uri.split('&');
+	var params = Object();
+
+    for (var i=0; i < chunks.length ; i++) {
+        var chunk = chunks[i].split('=');
+        if(chunk[0].search("\\[\\]") !== -1) {
+            if( typeof params[chunk[0]] === 'undefined' ) {
+                params[chunk[0]] = [chunk[1]];
+
+            } else {
+                params[chunk[0]].push(chunk[1]);
+            }
+
+
+        } else {
+            params[chunk[0]] = chunk[1];
+        }
+    }
+
+    return params;
+};
+
+/**
+ * json 객체를 지정 폼에 populate 한다.
+ * @param params json 객체
+ * @param frm jQuery형식의 폼 객체
+ */
+common.populateJson = function(params,frm){
+	$.each(params, function(key, value){
+		var _input = $('<input type="hidden"/>');
+		_input.attr('name',key);
+		_input.attr('value',value);
+		frm.append(_input);
+	});
+};
+
+
+$(document).ready(function(){
+	common.prepareDocumentReady();
+
+});
+
+common.prepareDocumentReady = function(){
+	/**
+	 * AJAX FORM
+	 */
+	$('form[data-async-form]').each(function(key,target){
+		$(target).prepareAsyncSubmit(
+			//function(){return eval($(target).attr('data-async-callback'));},
+			//function(){return eval($(target).attr('data-beforesubmit'));}
+		);
+	});
+
+};
+
+
+/*
+ * ####################################################################################
+ * 		private functions
+ * ####################################################################################
+ */
+common.asyncResponseHandler = function(json,status, xhr,inheritedCallback){
+	//json = common.parseJson(json);
+	if(StringUtil.isEmpty(json[common.MSG_FOR_ALERT]) == false){
+		//var success = json[common.SUCCESS_FLAG] == null || json[common.SUCCESS_FLAG] == true;
+		layerPopMsg(json[common.MSG_FOR_ALERT]);
+		common.asyncResponseRedirector(json,inheritedCallback);
+	} else {
+		common.asyncResponseRedirector(json);
+	}
+};
+common.asyncResponseRedirector = function(json,inheritedCallback){
+	if(typeof inheritedCallback == 'function'){
+		inheritedCallback();
+	}
+	if(StringUtil.isEmpty(json[common.URL_FOR_REDIRECT]) == false){
+		
+		// java단에서 Redirect시 파라미터를 post로 변경하기 위해 파라메터가 있는 경우 form을 생성하여 submit 해줌.
+		var submitRedirect = document.createElement("form");
+		submitRedirect.action = json[common.URL_FOR_REDIRECT]; 
+		submitRedirect.method = "post";
+		submitRedirect.id ="redirectForm";
+		submitRedirect.style.display ='none';
+		
+		var jsonCount = 0;
+		$.each(json,function(key,val){
+			if(key!="URL_FOR_REDIRECT"&&key!="MSG_FOR_ALERT"&&key!="SUCCESS_FLAG"){
+				jsonCount = jsonCount+1;
+				
+				var jsonHidden = document.createElement("input");
+				jsonHidden.type = "hidden";
+				jsonHidden.value = val;
+				jsonHidden.name = key;
+				submitRedirect.appendChild(jsonHidden);
+			}
+		});
+		
+		if(jsonCount==0){
+			location.href=json[common.URL_FOR_REDIRECT];
+		}else{
+			$("#container").append(submitRedirect);
+			$("#redirectForm").submit();
+		}
+	}
+};
+
+common.formSubmit = function(opt) {
+	var frm = $('#' + opt.formId);
+
+	if(typeof userGlobalParam != "undefined"){
+		var objs, value;
+		var opts = $.extend({}, userGlobalParam, opt);
+		for (var key in opts) {
+			value = opts[key];
+			objs = document.createElement("input");
+			objs.setAttribute("type", "hidden");
+			objs.setAttribute("name", key);
+			objs.setAttribute("value", value);
+			frm.append(objs);
+		}
+	}
+	
+	frm.attr("action", opt.url);
+	frm.submit();
+}
+
+$.ajaxSetup({
+	beforeSend : function(xhr) {
+		xhr.setRequestHeader("call_type", "AJAX");
+	},
+	error : function(xhr, status, err) {
+		if (xhr.status == 401) {
+			layerPopMsg($.message.get('message_a401'));
+		} else if (xhr.status == 403) {
+			layerPopMsg($.message.get('message_a403'));
+			//document.location.href = contextPath+"/";
+			var param ={url : contextPath+"/"}
+			layerPopParamMsg($.message.get('message_a403'),param);
+		} else if (xhr.status == 500) {
+			layerPopMsg($.message.get('message_a500'));
+		} else if (xhr.status == 404) {
+			layerPopMsg($.message.get('message_a404'));
+		} else {
+			// 나머지 오류에 대한 처리 필요
+			if (window.console && console.log) {
+                console.log(xhr);
+                console.log(status);
+                console.log(err);
+            }
+		}
+
+		if(/chrom(e|ium)/.test(navigator.userAgent.toLowerCase())) {
+//			console.log(xhr);
+//			console.log(status);
+//			console.log(err);
+		}
+
+		return false;
+	}
+})
+
+/**
+ * jquery.form.js를 이용한 ajax submit
+ */
+common.submit = function(opt){
+	var response = null;
+	var formId = opt.formId;
+	var frm = $('#' + formId);
+	var url = opt.url || frm.attr("action");
+	var callbackFunc = opt.callbackFunc || undefined;
+	var validation = opt.validation || false;
+	var returnMessage = opt.returnMessage || "hidden";
+	var confirmMessage = opt.confirmMessage || undefined;
+	
+	
+	var checkYN = true;
+	if (validation)
+		checkYN = frm.validator();
+	
+	if (confirmMessage && checkYN) {
+		if (!confirm(confirmMessage))
+			return;
+	}
+	
+	frm.attr("action", url);
+	
+	if(checkYN){
+		frm.ajaxForm({
+			dataType : "json" ,
+			success : function(data){
+				if (returnMessage == "show" && data.messageMap != undefined && data.messageMap.statusMessage != "")
+					layerPopMsg(data.messageMap.statusMessage);
+				
+				if (callbackFunc && typeof callbackFunc === 'function')
+					callbackFunc(data);
+				
+				response = data;
+			}
+		});
+		frm.submit();
+	}
+	
+	return response;
+};
+
+/**
+ * ajax submit
+ */
+common.ajaxCallbackSubmit = function(url, params, callbackMethod){
+	var response = null;
+	var returnMessage = params.returnMessage || "hidden";
+	if(callbackMethod != null){
+		$.ajax({
+	        type : "POST",
+	        url : url,
+	        data : params,
+	        dataType : "json",
+	        success : function(response){
+				if (returnMessage == "show" && response.messageMap != undefined && response.messageMap.statusMessage != undefined && response.messageMap.statusMessage != "")
+					layerPopMsg(response.messageMap.statusMessage);
+				if (callbackMethod)
+					callbackMethod(response);
+	        }
+	    });
+	}else{
+		$.ajax({
+	        type : "POST",
+	        url : url,
+	        data : params,
+	        dataType : "json",
+	        success : function(response, status, xhr, inheritedCallback) {
+	        	if (returnMessage == "show" && response.messageMap != undefined)
+	        		layerPopMsg(response.messageMap.statusMessage);
+	        	
+	        	common.ajaxResponse(response, status, xhr, inheritedCallback);
+	        }
+	    });
+	}
+};
+
+/**
+ * ajax submit
+ */
+common.ajaxCallbackSubmit = function(url, params, callbackMethod, option){
+	var response = null;
+	if ( option ) option = true;
+	var returnMessage = params.returnMessage || "hidden";
+	if(callbackMethod != null){
+		$.ajax({
+	        type : "POST",
+	        url : url,
+	        data : params,
+	        global : option,
+	        dataType : "json",
+	        success : function(response){
+				if (returnMessage == "show" && response.messageMap != undefined && response.messageMap.statusMessage != undefined && response.messageMap.statusMessage != "")
+					layerPopMsg(response.messageMap.statusMessage);
+				if (callbackMethod)
+					callbackMethod(response);
+	        }
+	    });
+	}else{
+		$.ajax({
+	        type : "POST",
+	        url : url,
+	        data : params,
+	        global : option,
+	        dataType : "json",
+	        success : function(response, status, xhr, inheritedCallback) {
+	        	if (returnMessage == "show" && response.messageMap != undefined)
+	        		layerPopMsg(response.messageMap.statusMessage);
+	        	
+	        	common.ajaxResponse(response, status, xhr, inheritedCallback);
+	        }
+	    });
+	}
+};
+
+/**
+ * ajax submit
+ */
+common.ajaxSrchCallback = function(url, params, callbackMethod){
+	var response = null;
+	var returnMessage = params.returnMessage || "hidden";
+	if(callbackMethod != null){
+		$.ajax({
+	        type : "GET",
+	        url : url,
+	        data : params,
+	        dataType : "json",
+	        success : function(response){
+				if (returnMessage == "show" && response.messageMap != undefined && response.messageMap.statusMessage != undefined && response.messageMap.statusMessage != "")
+					layerPopMsg(response.messageMap.statusMessage);
+				if (callbackMethod)
+					callbackMethod(response);
+	        }
+	    });
+	}else{
+		$.ajax({
+	        type : "GET",
+	        url : url,
+	        data : params,
+	        dataType : "json",
+	        success : function(response, status, xhr, inheritedCallback) {
+	        	if (returnMessage == "show" && response.messageMap != undefined)
+	        		layerPopMsg(response.messageMap.statusMessage);
+	        	
+	        	common.ajaxResponse(response, status, xhr, inheritedCallback);
+	        }
+	    });
+	}
+};
+
+
+/**
+ * ajax submit
+ */
+common.ajaxSyncCallbackSubmit = function(url, params, callbackMethod){
+	var response = null;
+	var returnMessage = params.returnMessage || "hidden";
+	if(callbackMethod != null){
+		$.ajax({
+			timeout : 15 * 1000,
+	        type : "POST",
+			async : false,
+			cache: false,	        
+	        url : contextUrl(url),
+	        data : params,
+	        dataType : "json",
+	        success : function(response){
+				if (returnMessage == "show" && response.messageMap != undefined && response.messageMap.statusMessage != undefined && response.messageMap.statusMessage != "")
+					layerPopMsg(response.messageMap.statusMessage);
+				if (callbackMethod)
+					callbackMethod(response);
+	        }
+	    });
+	}else{
+		$.ajax({
+			timeout : 15 * 1000,
+	        type : "POST",
+			async : false,
+			cache: false,		        
+	        url : url,
+	        data : params,
+	        dataType : "json",
+	        success : function(response, status, xhr, inheritedCallback) {
+	        	if (returnMessage == "show" && response.messageMap != undefined)
+					alert(response.messageMap.statusMessage);
+	        	
+	        	common.ajaxResponse(response, status, xhr, inheritedCallback);
+	        }
+	    });
+	}
+};
+
+common.ajaxCall = function(options) {
+	var default_value =  {			
+		timeout : 15 * 1000
+		, async : false
+		, cache: false
+		, dataType: "json"
+		, type: "POST"
+		, contentType : "application/x-www-form-urlencoded; charset=UTF-8"
+		, bLoading : "Y"
+		, confirmMessage : undefined
+		, returnMessage : 'hidden'
+	};
+	var opts = $.extend({},default_value, options);
+	var response;
+	
+	if (opts.confirmMessage) {
+		if (!confirm(opts.confirmMessage)) {
+			return false;
+		}
+	}
+	
+	var xhr = $.ajax({
+	    url: opts.url,
+	    timeout: opts.timeout,
+	    async: opts.async,
+	    cache: opts.cache,
+	    type: opts.type,
+	    processData: opts.processData,
+	    contentType: opts.contentType,
+	    dataType: opts.dataType,
+	    data: opts.data,
+	    beforeSend: function(xhr, settings) {
+	    	if(opts.bLoading == "Y"){
+	    		//showLoading();	// 로딩 시작	    		
+	    	}
+	    	xhr.setRequestHeader("call_type", "ajax");
+	    	if (opts.beforeSend) {
+	    		opts.beforeSend(xhr, settings);
+	    	}
+	    },
+	    success: function (data, textStatus, xhr) {
+	    	if (opts.returnMessage == "show" && data.messageMap != undefined)
+	    		layerPopMsg(data.messageMap.statusMessage);
+	    	
+	    	if (opts.success) {
+    	    	try{
+    	    		opts.success(data, textStatus, xhr);
+    	    	} catch(e){
+    	    		
+    	    		layerPopMsg($.message.get('message_new_E999'));
+    	    		return;
+    	    	}
+	    	}
+	    	response = data;
+	    }, 
+	    error: function (xhr, textStatus, errorThrown) {
+	    	if (opts.error) {
+	    		opts.error(xhr, textStatus, errorThrown);
+	    	}
+	    },
+	    complete: function (xhr, textStatus) {
+	    	if (opts.complete) {
+	    		opts.complete(xhr, textStatus);
+	    	}
+	    }
+	}); 
+ 	return response;
+};
+
+/**
+ * ajax submit
+ */
+common.ajaxCallbackSubmit2 = function(url, params, callbackMethod){
+	
+	if(callbackMethod != null){	 
+		$.ajax({
+			type : 'POST',
+	        url : url,
+	        data : params,
+	        crossDomain: true,
+	        dataType : "text",
+	        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+	        success : callbackMethod,
+	        error : function(xhr, status, exception,exMap){
+	        	var ex = jQuery.parseJSON(xhr.responseText);
+	        	layerPopMsg(ex.MESSAGE + "\n ("+status+")");
+				return false;
+	        }
+	    });
+	}else{
+		$.ajax({
+			type : 'POST',
+	        url : url,
+	        data : params,
+	        crossDomain: true,
+	        dataType : "text",
+	        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+	        success : common.ajaxResponse,   
+	        error : function(xhr, status, exception, exMap){
+	        	var ex = jQuery.parseJSON(xhr.responseText);
+	        	layerPopMsg(ex.MESSAGE + "\n ("+status+")");
+				return false;
+	        }
+	    });
+	}
+};
+
+common.ajaxCallbackSubmitSSL = function(options){
+
+	var default_value =  {			
+		timeout : 15 * 1000
+		, async : false
+		, cache: false
+		, crossDomain: false
+		, dataType: "json"
+		, type: "POST"
+		, data : ""
+		, contentType : "application/x-www-form-urlencoded; charset=UTF-8"
+		, confirmMessage : undefined
+		, returnMessage : 'hidden'
+		, callbackMethod : null
+	};
+	var opts = $.extend({},default_value, options);
+	
+	if(opts.callbackMethod != null){	 
+		$.ajax({
+			type : opts.type,
+			url : opts.url,
+			data : opts.data,
+			crossDomain: opts.crossDomain,
+			dataType : opts.dataType,
+			contentType: opts.dataType,
+			success : opts.callbackMethod,
+			error : function(xhr, status, exception,exMap){
+				var ex = jQuery.parseJSON(xhr.responseText);
+				layerPopMsg(ex.MESSAGE + "\n ("+status+")");
+				return false;
+			}
+		});
+	}else{
+		$.ajax({
+			type : opts.type,
+			url : opts.url,
+			data : opts.data,
+			crossDomain: opts.crossDomain,
+			dataType : opts.dataType,
+			contentType: opts.dataType,
+			success : common.ajaxResponse,   
+			error : function(xhr, status, exception, exMap){
+				var ex = jQuery.parseJSON(xhr.responseText);
+				layerPopMsg(ex.MESSAGE + "\n ("+status+")");
+				return false;
+			}
+		});
+	}
+};
+
+/**
+ * ajax response
+ */
+common.ajaxResponse = function(json, status, xhr, inheritedCallback){
+	if(typeof json != 'object'){
+		json = JSON.parse(json);
+	}
+	if(StringUtil.isEmpty(json[common.MSG_FOR_ALERT]) == false){
+		layerPopMsg(json[common.MSG_FOR_ALERT]);
+	}
+	if(status == "success"){
+		if(StringUtil.isEmpty(json[common.URL_FOR_REDIRECT]) == false){
+			location.href=json[common.URL_FOR_REDIRECT];
+		}
+	}
+};
+
+//popup
+common.windowOpen = function(uri, width, height) {
+	common.windowOpenWithName(uri, width, height, '_blank');
+};
+
+//popup -custom
+common.windowOpenWithName = function(uri, width, height, popName) {
+	if(uri == null || uri.length < 1){
+		layerPopMsg($.message.get('message_new_M0003395'));
+		return;
+	}
+	var intWidth = screen.width-50;
+	var intHeight = screen.height-100;
+
+	if(width != null){
+		intWidth = width;
+	}
+	if(height != null){
+		intHeight = height;
+	}
+
+	var opt = "scrollbars=yes,toolbar=no, titleBar=no, status=no, resizable=yes,width="+intWidth+",height="+intHeight+",left="+((screen.width-intWidth)/2)+",top="+((screen.height-intHeight)/2);
+
+	window.open(uri, popName, opt);
+};
+//popup - post
+common.windowOpenPost = function(uri, form_name, width, height) {
+	if(uri == null || uri.length < 1){
+		layerPopMsg($.message.get('message_new_M0003395'));
+		return;
+	}
+	var intWidth = screen.width-50;
+	var intHeight = screen.height-100;
+
+	if(width != null){
+		intWidth = width;
+	}
+	if(height != null){
+		intHeight = height;
+	}
+
+	var opt = "scrollbars=yes,toolbar=no, titleBar=no, status=no, resizable=yes,width="+intWidth+",height="+intHeight+",left="+((screen.width-intWidth)/2)+",top="+((screen.height-intHeight)/2);
+
+	window.open('', form_name, opt);
+	
+	$("form[name="+form_name+"]").attr("action",uri);
+	$("form[name="+form_name+"]").attr("method","post");
+	$("form[name="+form_name+"]").attr("target",form_name );
+	
+	$("form[name="+form_name+"]").submit();
+};
+
+common.specialStr = function(str){
+	var special_str = /[1234567890~`!@#$%^&*()_\-+|{}[\].?\/]/g;
+
+	if(special_str.test(str)) {
+		return true;
+	}else{
+		return false;
+	}
+};
+
+/**
+ * 입력된 Form ID에 해당하는 Elements를 Reset 한다.
+ */
+common.formReset = function(formId){
+	$("#"+formId).each(function(){
+		this.reset();
+	});
+};
+
+/*************************************************************************
+ * 업로드 팝업을 오픈한다.
+ **************************************************************************/
+common.callAspUploadPop = function(uploadUrl, pageUrl,popupName){
+	var returnUrl = "";
+	var popName = "";
+	if(pageUrl == undefined)
+		returnUrl = document.location.origin + contextPath + "/admin/content/popup/returnTransferContentsResult.do";
+	else
+		returnUrl = document.location.origin + contextPath + pageUrl;
+	
+	if(popupName == undefined) popName = "aspUploadPop";
+	
+	//if(document.location.pathname.indexOf(contextPath) > 0)
+		//returnUrl = document.location.origin + contextPath + "/returnTransferContentsResult.mvc";
+	
+	uploadUrl += "?return_url="+returnUrl;
+	common.windowOpenWithName(uploadUrl, '440', '300', popupName);
+};
+
+/*************************************************************************
+ * 이미지 업로드 팝업을 오픈한다.
+ **************************************************************************/
+common.callAspImgUploadPop = function(uploadUrl, pageUrl){
+	var returnUrl = "";
+	
+	if(pageUrl == undefined)
+		returnUrl = document.location.origin + contextPath + "/returnTransferContentsResult.mvc";
+	else
+		returnUrl = document.location.origin + contextPath + pageUrl;
+	
+	if(document.location.pathname.indexOf(contextPath) > 0)
+		returnUrl = document.location.origin + contextPath + "/returnTransferContentsResult.mvc";
+	
+	uploadUrl += "?return_url="+returnUrl;
+	common.windowOpenWithName(uploadUrl, '440', '300', 'aspUploadPop');
+};
+
+/**
+ * 동영상 플레이어를 오픈한다.
+ */
+common.CallAspPlayPop = function(filePath,width,height,mode){
+	/*if(path == 'null'){
+		layerPopMsg('등록된 URL이 올바르지 않습니다.');
+		return false;
+	}
+	var paryUrl = "http://122.99.198.141/encoding/vod_pop.asp?idx="+path;
+	common.windowOpenWithName(paryUrl, '720', '480', 'aspPlayPop');*/
+	
+};
+
+/**
+ * Json 데이터를 입력된 form에 Binding 한다.
+ */
+common.formDataBinding = function(map,fomrId){
+	$(fomrId)[0].reset();
+	if(map != null){
+		$.each(map, function(datakey, datavalue) {
+			$(fomrId).find('input, textarea, select, checkbox, radio').each(function(index,target){
+				if($(this).attr('id') != null){
+					if($(this).attr('id') == datakey || $(this).attr('name') == datakey) {
+	                    if($(this).attr("type") == 'radio')
+	                    	if($(this).attr("value") == datavalue) $(this).attr("checked",true);
+	                    
+	                    if($(this).attr("type") == 'checkbox')
+	                    	if($(this).attr("value") == datavalue) $(this).attr("checked",true);
+						
+	                    $(this).val(datavalue);
+	                }
+				}
+            });
+        });	
+	}
+};
+
+function onlyNum(inputBox) {
+    var inputVal = $(inputBox).val();
+    inputVal = inputVal.replace(/[^0-9]/g,'');
+    $(inputBox).val(inputVal);
+}
+
+function onlyNumAndComma(inputBox){
+	var inputVal = $(inputBox).val();
+    inputVal = inputVal.replace(/[^0-9]/g,'');
+    $(inputBox).val(inputVal);
+    
+    inputVal = $(inputBox).val();
+    var money = checkMoneyUnit(inputVal);
+    $(inputBox).val(money);
+}
+
+/**
+ * 입력받은 숫자를 금액으로 반환
+ * @param
+ * @returns
+ */
+function checkMoneyUnit(employInsurance) {
+	var employ_insurance = employInsurance;
+	var commaValue = "";
+	
+	//4자리에서 5자리 이상 숫자를 입력했을 때, 정확한 자리수 체크를 위해 초기화 해줌
+	employ_insurance = $.trim(employ_insurance);
+	for(var i=1; i<=employ_insurance.length; i++) {
+		if(i > 1 && (i%3) == 1) { //3자리로 나눠서 남은 자리가 1이면 콤마(')처리
+			commaValue = employ_insurance.charAt(employ_insurance.length-i) + "," + commaValue;
+		} else {
+			commaValue = employ_insurance.charAt(employ_insurance.length-i) + commaValue;
+		}
+	}
+	
+	return commaValue;
+}
+
+/**
+ * 금액표시와 같이 숫자값에 세자리씩 콤마를 추가한다.
+ * @param number : 숫자값
+ */
+function addComma(number) {
+	number = '' + number;
+	var number1 = "";
+	var number2 = "";
+
+	if (number.indexOf(".") > 0) {
+		number1 = number.substring(0, number.indexOf("."));
+		number2 = number.substring(number.indexOf("."));
+
+	} else {
+		number1 = number;
+	}
+
+	if (number1.length > 3) {
+		var mod = number1.length % 3;
+		var output = (mod > 0 ? (number1.substring(0, mod)) : '');
+
+		for (var i=0 ; i < Math.floor(number1.length / 3); i++) {
+			if ((mod == 0) && (i == 0)) {
+				output += number1.substring(mod+ 3 * i, mod + 3 * i + 3);
+			} else {
+				output+= ',' + number1.substring(mod + 3 * i, mod + 3 * i + 3);
+			}
+		}
+
+		return (output + number2);
+
+	} else {
+		return (number1 + number2);
+	}
+}
+
+/**
+ * 입력받은 숫자(또는 문자열)을 세자리 마다 콤마 추가
+ * @param number
+ * @returns
+ */
+function addCommaNumber(number) {
+	number = '' + number;
+	if (number.length > 3) {
+	var mod = number.length % 3;
+	var output = (mod > 0 ? (number.substring(0,mod)) : '');
+		for (var i=0 ; i < Math.floor(number.length / 3); i++) {
+		if ((mod == 0) && (i == 0))
+			output += number.substring(mod+ 3 * i, mod + 3 * i + 3);
+		else
+			output+= ',' + number.substring(mod + 3 * i, mod + 3 * i + 3);
+		}
+	return (output);
+	}
+	else return number;
+}
+
+/**
+ * 공통 레이어 팝업
+ */
+common.layerPopup = function(url, id){
+	$.ajax({
+        type : "POST",
+        url : contextUrl(url),
+        cache: false,
+        success : function(data) {
+        	common.popupCallback(data, id);
+	    }
+    });
+};
+
+common.layerPopupParam = function(url, id, params){
+//	var validation = params.validation || false;
+//	var formId = params.formId;
+//	var frm = $('#' + formId);
+
+	var checkYN = true;
+//	if (validation)
+//		checkYN = frm.validator();
+
+	if(checkYN){
+		$.ajax({
+	        type : "POST",
+	        url : contextUrl(url),
+	        cache: false,
+	        data : params,
+	        success : function(data) {
+	        	common.popupCallback(data, id);
+		    }
+	    });
+	}
+};
+
+/**
+ * 팝업콜백함수
+ */
+common.popupCallback = function(data, id, layerTemplateId) {
+	$(id).remove();
+	var link =  document.location.href;
+	var height = "";
+	
+	if(link.indexOf("/admin/") > 0) height = "auto";
+	//else height = inits.docH - 100;
+	if(layerTemplateId) {
+		$('#' + layerTemplateId).html(data);
+		$(id).dialog({
+			modal: true,
+			width: "auto",
+			height: height
+			, draggable : false
+		});
+		
+		$(window).resize(function() {
+			$(id).dialog("option", "position", {my: "center", at: "center", of: window});
+		});
+		
+		if($("[aria-describedby="+id.replace("#","")+"]").length > 0){
+			$(document).on("click","[aria-describedby="+id.replace("#","")+"] .ui-dialog-titlebar-close",function(){
+				$("[aria-describedby="+removeId+"]").eq(0).remove();
+			});
+			$(id+" .btn_lyclose").on("click", function () {
+				$("[aria-describedby="+removeId+"]").eq(0).remove();
+			});
+		}else{
+			$(document).on("click",".ui-dialog-titlebar-close",function(){
+				$(".ui-dialog").remove();
+			});
+		}
+		$("body").find(id).remove();
+		
+	} else {
+		if ($("#layer_template").length == 0)
+			$("body").append('<div id="layer_template"></div>');
+		
+		$("#layer_template").html(data);
+		
+		$(id).dialog({
+			modal: true,
+			width: "auto",
+			height: $(id).height() + 10
+			, draggable : false
+		});
+		
+		$(window).resize(function() {
+			$(id).dialog("option", "position", {my: "center", at: "center", of: window});
+		});
+		
+		if($("[aria-describedby="+id.replace("#","")+"]").length > 0){
+			$(document).on("click","[aria-describedby="+id.replace("#","")+"] .ui-dialog-titlebar-close",function(){
+				$("[aria-describedby="+removeId+"]").eq(0).remove();
+				$("#layer_template").find(id).remove();
+				$("html").css({overflow: "visible"});
+			});
+			$(id+" .btn_lyclose").on("click", function () {
+				$("[aria-describedby="+removeId+"]").eq(0).remove();
+				$("#layer_template").find(id).remove();
+				$("html").css({overflow: "visible"});
+			});
+		}else{
+			$(document).on("click",".ui-dialog-titlebar-close",function(){
+				$(".ui-dialog").remove();
+				$("#layer_template").find(id).remove();
+				$("html").css({overflow: "visible"});
+			});
+		}	
+	}
+	/*	이미 해당 Dialog가 등록되어 있다면 첫번째를 제거한다.	*/
+	var removeId = id.replace("#","");
+	if($("[aria-describedby="+removeId+"]").length > 1){
+		$("[aria-describedby="+removeId+"]").eq(0).remove();
+		$("#layer_template").find(id).remove();
+	}
+	$('.thumbLoad').onLoadThumb(); // 썸네일 이미지
+	$(".ui-button-icon-primary").remove();
+	
+	// 필수 체크 표시
+	$("form").each(function() {
+		$(this).onloadValidator(true);
+	});
+	
+	// Drag
+	$(".ui-dialog").draggable({ 
+		handle: "h1"
+	});
+		
+};
+
+function resizePopupLayer() {
+	var documentHeight = $("body").height();
+	var contentHeight = $(".lypop_con").height() || 0;
+	
+	if (contentHeight > documentHeight) {
+		$(".lypop_con").css("max-height", documentHeight - 100 + "px");
+	} else {
+		$(".lypop_con").css("max-height", "100%");
+	}
+}
+
+/***************************************************************************
+ * 동영상 플레이어 레이어 팝업을 오픈한다.
+****************************************************************************/
+common.viewMoviePlayLayer = function(movieFile,width,height){
+	if(width == undefined) width = "840";
+	if(height == undefined) height = "470";
+	
+	var url = contextPath+"/admin/content/popup/viewContentsVideoPlayerPopup.do";
+	var params = "movieFilePath="+movieFile;
+	params += "&movieWidth="+width;
+	params += "&movieHeight="+height;
+	common.layerPopupParam(url,"#viewContentsMoviePop",params);
+};
+
+/***************************************************************************
+ * 이미지 뷰 팝업을 오픈한다.
+****************************************************************************/
+common.viewImgPop = function(fileSeq){
+	var url = contextPath+"/admin/content/popup/viewContentsImgViewPopup.do";
+	var params = "fileSeq="+fileSeq;
+	common.layerPopupParam(url,"#viewContentsImgPop",params);
+};
+
+/***************************************************************************
+ * 문서 뷰어 팝업을 오픈한다.
+****************************************************************************/
+common.docViewer = function(path, member_id){
+	if(path == undefined || path == '') return false;
+	var pathArray = path.split("/");
+//	var url = "http://211.49.227.155/doc_player.asp?year_nm="+pathArray[0]+"&file_nm="+pathArray[2]+"&user_id="+member_id;
+	var url = path;
+	common.windowOpenWithName(url, "1024", "773", '_blank');
+};
+
+/***************************************************************************
+ * 퀴즈 플레이어 레이어 팝업을 오픈한다.
+****************************************************************************/
+common.examPreviewer = function(actionSeq, width, height){
+	if(width == undefined) width = "1000";
+	if(height == undefined) height = "640";
+
+	var url = contextPath+"/admin/bank/viewExamPreviewPopup.mvc";
+	var params = "actionSeq=" + actionSeq;
+	params += "&movieWidth="+width;
+	params += "&movieHeight="+height;
+	common.layerPopupParam(url, "#viewExamPreviewPop", params);
+};
+
+common.surveyPreviewer = function(actionSeq, width, height){
+	if(width == undefined) width = "1000";
+	if(height == undefined) height = "640";
+
+	var url = contextPath+"/admin/bank/viewSurveyPreviewPopup.mvc";
+	var params = "actionSeq=" + actionSeq;
+	params += "&movieWidth="+width;
+	params += "&movieHeight="+height;
+	common.layerPopupParam(url, "#viewSurveyPreviewPop", params);
+};
+
+common.changeXssWord = function(xssStr){
+	xssStr = xssStr.replace(/</gi, '');
+	xssStr = xssStr.replace(/>/gi, '');
+	xssStr = xssStr.replace(/"/gi, '');
+	xssStr = xssStr.replace(/'/gi, '');
+	return xssStr;
+}
+
+// Url 이동(Post)
+postGoto = function(url, parm, target) {		// JSON 으로 넘어온 값을 param으로 담아서 submit
+	url = contextUrl(url);
+	var frm = document.createElement("form");
+	var objs, value;
+	if(typeof userGlobalParam == "undefined"){
+		userGlobalParam = {};
+	}
+	var opts = $.extend({}, userGlobalParam, parm);
+	for (var key in opts) {
+	    value = opts[key];
+	    objs = document.createElement("input");
+	    objs.setAttribute("type", "hidden");
+	    objs.setAttribute("name", key);
+	    objs.setAttribute("value", value);
+	    frm.appendChild(objs);
+	}
+	// get Param 처리
+	var arrUrl = url.split('?');
+	if(typeof arrUrl[1] != "undefined"){
+		var arrParamUrl = arrUrl[1].split('&');
+		for(var i = 0; i < arrParamUrl.length; i++){
+			var arrTmp = arrParamUrl[i].split('='); 
+		    objs = document.createElement("input");
+		    objs.setAttribute("type", "hidden");
+		    objs.setAttribute("name", arrTmp[0]);
+		    objs.setAttribute("value", arrTmp[1]);
+		    frm.appendChild(objs);
+		}
+	}
+	if (target) {
+	    frm.setAttribute("target", target);
+	}
+	frm.setAttribute("method", "post");
+	frm.setAttribute("action", arrUrl[0]);
+	document.body.appendChild(frm);
+	frm.submit();
+	//로딩바 초기화
+	window.onbeforeunload =null;//로딩바 초기화
+	$('.lds-default').hide();
+	$("#divLoading").css({
+		display: "none"
+	});
+};
+
+windowOpen = function(url, param, tObj, opt){	
+	//console.log("111.param = " + param);	
+	if(typeof url != "undefined"){
+		var frm = document.createElement("form");
+		var objs, value;
+		// get Param 처리
+		var arrUrl = param.split('?');		
+		//console.log("2222.url = " + arrUrl[0]);
+		
+		if(typeof arrUrl[1] != "undefined"){
+			var arrParamUrl = arrUrl[1].split('&');
+
+		    objs = document.createElement("input");
+		    objs.setAttribute("type", "hidden");
+		    objs.setAttribute("name", "url");
+		    objs.setAttribute("value", arrUrl[0]);
+		    frm.appendChild(objs);
+		    
+			for(var i = 0; i < arrParamUrl.length; i++){
+				var arrTmp = arrParamUrl[i].split('='); 
+				//console.log("param = " + arrParamUrl[i]);
+			    objs = document.createElement("input");
+			    objs.setAttribute("type", "hidden");
+			    objs.setAttribute("name", arrTmp[0]);
+			    objs.setAttribute("value", arrTmp[1]);
+			    frm.appendChild(objs);
+			}
+		} else {
+		    objs = document.createElement("input");
+		    objs.setAttribute("type", "hidden");
+		    objs.setAttribute("name", "url");
+		    objs.setAttribute("value", arrUrl[0]);
+		    frm.appendChild(objs);
+		}
+		var tmp = window.open(url, tObj,opt);
+
+		frm.setAttribute("method", "post");
+		frm.setAttribute("action", url);
+	    frm.setAttribute("target", tObj);
+	    document.body.appendChild(frm);
+		frm.submit();
+	}
+}
+
+lPad = function (originalstr, n, c) {
+	if(typeof(originalstr) == 'number') originalstr = originalstr.toString();
+	
+	while (originalstr.length < n)
+		originalstr = c + originalstr;
+	
+	return originalstr;
+};
+// 주민번호 체크
+isJumin = function(juminNo) {
+	/*
+	// 2017.02.22 외국인 주민번호 체크 오류료 변경
+	jumin = jumin.replace(/\-/g, '');
+	// 주민번호의 형태와 7번째 자리(성별) 유효성 검사
+	if (!/^\d{6}(\-|)[1-4]\d{6}$/.test(jumin)) {
+	    return false;
+	}
+
+	// 날짜 유효성 검사
+	var birthYear = (jumin.charAt(7) <= "2") ? "19" : "20";
+		birthYear += jumin.substr(0, 2);
+	var birthMonth = jumin.substr(2, 2) - 1;
+	var birthDate = jumin.substr(4, 2);
+	var birth = new Date(birthYear, birthMonth, birthDate);
+
+	if ( birth.getYear() % 100 != jumin.substr(0, 2) ||
+	    birth.getMonth() != birthMonth ||
+	    birth.getDate() != birthDate) {
+		return false;
+	}
+
+	// Check Sum 코드의 유효성 검사
+	buf = new Array(13);
+	for (i = 0; i < 6; i++) buf[i] = parseInt(jumin.charAt(i));
+	for (i = 6; i < 13; i++) buf[i] = parseInt(jumin.charAt(i));
+
+	multipliers = [2,3,4,5,6,7,8,9,2,3,4,5];
+	for (i = 0, sum = 0; i < 12; i++) sum += (buf[i] *= multipliers[i]);
+
+	if ((11 - (sum % 11)) % 10 != buf[12]) {
+		return false;
+	}
+
+	return true;
+	*/
+	var strJumin = juminNo.replace("-", "");
+	var checkBit = new Array(2,3,4,5,6,7,8,9,2,3,4,5);
+	var num7  = strJumin.charAt(6);
+	var num13 = strJumin.charAt(12);
+	var total = 0;
+	if (strJumin.length == 13 ) {
+		for (i=0; i<checkBit.length; i++) { // 주민번호 12자리를 키값을 곱하여 합산한다.
+			total += strJumin.charAt(i)*checkBit[i];
+		}
+		// 외국인 구분 체크
+		if (num7 == 0 || num7 == 9) { // 내국인 ( 1800년대 9: 남자, 0:여자)
+			total = (11-(total%11)) % 10;
+		}
+		else if (num7 > 4) {  // 외국인 ( 1900년대 5:남자 6:여자  2000년대 7:남자, 8:여자)
+			total = (13-(total%11)) % 10;
+		}
+		else { // 내국인 ( 1900년대 1:남자 2:여자  2000년대 3:남자, 4:여자)
+			total = (11-(total%11)) % 10;
+		}
+	 
+		if(total != num13) {
+			return false;
+		}
+		return true;
+	} else{
+		return false;
+	}
+}
+
+// 통계 Tooltip
+function tooltip_contents(d, defaultTitleFormat, defaultValueFormat, color) {
+    var $$ = this, config = $$.config, CLASS = $$.CLASS,
+        titleFormat = config.tooltip_format_title || defaultTitleFormat,
+        nameFormat = config.tooltip_format_name || function (name) { return name; },
+        valueFormat = config.tooltip_format_value || defaultValueFormat,
+        text, i, title, value, name, bgcolor;
+
+    var total = 0;
+
+
+    for (i = 0; i < d.length; i++) {
+        if (! (d[i] && (d[i].value || d[i].value === 0))) { continue; }
+
+        // ADD
+        if (d[i].name === 'data2') { continue; }
+
+        if (! text) {
+            title = defaultTitleFormat(d[i].x);
+            text = "<table class='" + CLASS.tooltip + "'>" + (title || title === 0 ? "<tr><th colspan='2'>" + title + "</th></tr>" : "");
+        }
+
+        name = nameFormat(d[i].name);
+        value = valueFormat(d[i].value, d[i].ratio, d[i].id, d[i].index);
+        bgcolor = $$.levelColor ? $$.levelColor(d[i].value) : color(d[i].id);
+
+        text += "<tr class='" + CLASS.tooltipName + "-" + d[i].id + "'>";
+        text += "	<td class='name'><span style='background-color:" + bgcolor + "'></span>" + name + "</td>";
+        text += "	<td class='value'>" + value + "</td>";
+        text += "</tr>";
+        total += value;
+    }
+    if (d.length > 1) {
+        text += "<tr style='font-weight:bold;'>";
+        text += "	<td class='name'>"+$.message.get('message_new_M0000521')+"</td>";
+		var isFloat = false;
+        for (var i=0; i < total.length; i++) {
+            if (total.charAt(i) == ".") {
+                isFloat = true;
+                break;
+            }
+        }
+
+        text += "	<td class='value'>" + (isFloat == true ? total.toFixed(2) : total) + "</td>";
+        text += "</tr>";
+    }
+
+    return text + "</table>";
+}
+
+function tooltip_contents_no_total(d, defaultTitleFormat, defaultValueFormat, color) {
+    var $$ = this, config = $$.config, CLASS = $$.CLASS,
+        titleFormat = config.tooltip_format_title || defaultTitleFormat,
+        nameFormat = config.tooltip_format_name || function (name) { return name; },
+        valueFormat = config.tooltip_format_value || defaultValueFormat,
+        text, i, title, value, name, bgcolor;
+
+    for (i = 0; i < d.length; i++) {
+        if (! (d[i] && (d[i].value || d[i].value === 0))) { continue; }
+
+        // ADD
+        if (d[i].name === 'data2') { continue; }
+
+        if (! text) {
+            title = defaultTitleFormat(d[i].x);
+            text = "<table class='" + CLASS.tooltip + "'>" + (title || title === 0 ? "<tr><th colspan='2'>" + title + "</th></tr>" : "");
+        }
+
+        name = nameFormat(d[i].name);
+        value = valueFormat(d[i].value, d[i].ratio, d[i].id, d[i].index);
+        bgcolor = $$.levelColor ? $$.levelColor(d[i].value) : color(d[i].id);
+
+        text += "<tr class='" + CLASS.tooltipName + "-" + d[i].id + "'>";
+        text += "	<td class='name'><span style='background-color:" + bgcolor + "'></span>" + name + "</td>";
+        text += "	<td class='value'>" + value + "</td>";
+        text += "</tr>";
+
+    }
+
+    return text + "</table>";
+}
+
+function fnMove(id){
+    var offset = $("#" + id).offset();
+    var height = $('#content').scrollTop();
+    var move = height + offset.top;
+
+    $('#content').animate({scrollTop : move - 230}, 600);
+}
+var setToDay = function(format){
+	if(typeof format == "undefined" || format == ""){
+		format = 'yy/mm/dd';
+	}
+	return $.datepicker.formatDate(format, new Date());
+};
+//날짜 비교 : false/true 리턴
+var chkDate = function(tDate, dDate){
+	var bChk = false;
+	tDate = new Date(tDate);
+	if(typeof dDate == "undefined" || dDate == ""){
+		dDate = new Date();
+	} else {
+		dDate = new Date(dDate);
+	}
+	if(tDate >= dDate){
+		bChk = true;
+	}
+	return bChk;
+};
+// 천단위 콤마 생성
+var fnComma = function(id) {
+	$("#" + id).on('keyup', function(){
+		if ($(this).val() != null && $(this).val() != '') {
+			var tmps = parseInt($(this).val().replace(/[^0-9]/g, '')) || '0';
+			var tmps2 = tmps.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, '$1,');
+		       $(this).val(tmps2);
+		}
+	});
+};
+//천단위 콤마 제거
+var fnCommaRemove = function(id)  {
+	var comRemove = $("#" + id).val().replace(/,/gi,"");
+	$("#" + id).val(comRemove);
+	
+
+};
+
+
+//우편번호 검색
+//postCode:우편번호ID ,addr:주소ID ,addr2:상세주소ID 
+var searchAddr = function(postCodeId,addrId,detailAddrId){
+	new daum.Postcode({
+	    oncomplete: function(data) {
+	        // 팝업에서 검색결과 항목을 클릭했을때 실행할 코드를 작성하는 부분.
+	
+	        // 각 주소의 노출 규칙에 따라 주소를 조합한다.
+	        // 내려오는 변수가 값이 없는 경우엔 공백('')값을 가지므로, 이를 참고하여 분기 한다.
+	        var addr = ''; // 주소 변수
+	
+	        //사용자가 선택한 주소 타입에 따라 해당 주소 값을 가져온다.
+	        if (data.userSelectedType === 'R') { // 사용자가 도로명 주소를 선택했을 경우
+	            addr = data.roadAddress;
+	        } else { // 사용자가 지번 주소를 선택했을 경우(J)
+	            addr = data.jibunAddress;
+	        }
+	        // 우편번호와 주소 정보를 해당 필드에 넣는다.
+	        document.getElementById(postCodeId).value = data.zonecode;
+	        document.getElementById(addrId).value = addr;
+	        // 커서를 상세주소 필드로 이동한다.
+	        document.getElementById(detailAddrId).focus();
+	    }
+	}).open();
+}
+
+var editor = function(id,params,setHeight,setWidth){
+	//https://jsfiddle.net/jcft7snm/ 샘플
+	//https://froala.com/wysiwyg-editor/docs/concepts/image/upload/ API관련
+	
+//	var chkFile ="jpg,gif,png,bmp"; //업로드 유형이 가능한 부분(*일 경우 전체가능)
+	var chkFile ="*"; //업로드 유형이 가능한 부분(*일 경우 전체가능)
+	if(params.chkFile != null)chkFile = params.chkFile;
+	
+	/* 'ko' //한국어 ,'ja' //일본어 ,'es' //스페인어 ,'fr' //프랑스어 ,'zh_cn' //중국어 ,'zh_tw', //대만어 ,'vi' //베트남어 */
+	var paramLang="";
+	if(localeLang =="ko") paramLang = "ko";	
+	else if(localeLang == "zh") paramLang ="zh_cn"; //중국어
+	else if(localeLang == "vi") paramLang ="vi"; //베트남어
+	else if(localeLang == "ca") paramLang ="es"; //스페인어
+	else if(localeLang == "ja") paramLang ="ja"; //일본어
+	else paramLang ="en";//영어
+
+	new MilcEditor('#'+id, {				// documentReady: true, // 문서형식 모드
+		attribution : false, 				//하단에 있는 Froala 버튼 부분 
+		inlineMode : false,
+		useClasses : false, 				//이 옵션이 비활성화되면 편집 된 콘텐츠는 인라인 스타일로 변환 된 외부 CSS 속성을 갖게됩니다.(참고 : 이 옵션이 올바르게 작동하려면 편집기가 실행중인 동일한 도메인에서 CSS 파일을로드해야합니다.)
+		language : paramLang,
+		imageMove: true,
+		imageUploadURL : contextPath+'/file/common/ajax/imgFileUpload.do', // Image Upload url 입력
+		//imageUploadURL : '/admin/sample/popup/imgFileUpload.do', // Image Upload url 입력
+		imageUploadMethod : 'POST' ,
+		imageUploadParams : params, 		//업로드 요청에 추가 매개 변수를 전달합니다.
+		imageMaxSize : 	10 * 1024 * 1024,	// 최대 이미지 크기를 설정합니다. 
+		imageManagerLoadURL : '', 		// Image Load url 입력
+		//imageManagerDeleteURL : 'D:\img', // Image Delete url 입력
+		imageManagerLoadParams : {			// 이미지 관리자의로드 이미지 요청에 전달 된 추가 매개 변수입니다.
+			params : 'params', // 업로드시 사용되는 파라미터 정의
+			_token : "CSRF TOKEN"
+		},
+		//fileUploadURL : '/admin/sample/popup/fileUpload.do', // File Upload url 입력
+		key : 'yDC5hF4E3B9D6C5E4gKTRe1CD1PGb1DESAb1Kd1EBH1Pd1TKoD6C5G5F4G2D3I3B4B5E5==', // 라이센스 Key
+		fileAllowedTypes : [ chkFile],	//업로드가 허용되는 파일 유형 목록입니다. 이렇게하면 다른 유형의 파일 업로드가 제한되지만 서버에서도 파일 유형을 확인하는 것이 좋습니다.(fileAllowedTypes : [ 'application / pdf' , 'application / msword' ])
+		tabSpaces : 4,				//TAB 키를 누르면 편집기가 지정된 수의 공간을 추가합니다. 0으로 설정하면 TAB 키를 사용하여 페이지를 기본적으로 탐색 할 수 있습니다.
+		fontFamilyDefaultSelection: '나눔고딕',	//글꼴 모음을 알 수 없거나 아무것도 선택하지 않았을 때 표시 할 텍스트입니다.
+		fontFamily: {
+			'Nanum Gothic,sans-serif' : '나눔고딕',
+			'Arial,Helvetica,sans-serif' : 'Arial',
+			'Georgia,serif' : 'Georgia',
+			'Impact,Charcoal,sans-serif' : 'Impact',
+			'Tahoma,Geneva,sans-serif' : 'Tahoma',
+			'Times New Roman,Times,serif,-webkit-standard' : 'Times New Roman',
+			'Verdana,Geneva,sans-serif' : 'Verdana'
+		},
+		heightMin : 200,	//서식있는 텍스트 편집기의 편집 상자에 대한 최소 높이를 설정합니다
+		heightMax : 1500,	//서식있는 텍스트 편집기의 편집 상자에 대한 최대 높이를 설정합니다.
+		height : setHeight,
+		width : setWidth,
+		zIndex : 9999,			//편집기 도구 모음 및 팝업에 설정할 zIndex입니다.
+		codeMirror : window.CodeMirror,	//HTML보기를 강조 표시하려면 CodeMirror 라이브러리를 사용하여 비활성화하거나 활성화합니다. 참고 : 이 옵션을 사용하려면 CodeMirror 라이브러리가 포함되어야합니다.
+		codeMirrorOptions : { //CodeMirror에 대한 옵션을 지정합니다.
+			tabSize : 4,
+			lineNumbers : true,
+			mode : 'text/html',
+			tabMode : 'indent',
+			lineWrapping : true
+		},
+		codeBeautifierOptions: { //Code Beautifier에 대한 옵션을 지정합니다.
+			end_with_newline : true,
+			indent_inner_html : true,
+			extra_liners : "['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'ul', 'ol', 'table', 'dl']",
+			brace_style : 'expand',
+			indent_char : ' ',
+			indent_size : 4,
+			wrap_line_length : 0
+		},
+		paragraphFormat : {//도구 모음의 단락 형식 드롭 다운에 표시되는 옵션이있는 개체입니다. 
+						   //'N'태그가로 취급 될 경우 <p>(가) 때 입력 옵션으로 설정 FroalaEditor.ENTER_P하고 같은 <div>(가) 때 입력 옵션으로 설정됩니다 FroalaEditor.ENTER_DIV.
+			N : 'Normal',
+			H1 : 'Heading 1',
+			H2 : 'Heading 2',
+			H3 : 'Heading 3',
+			H4 : 'Heading 4',
+			H5 : 'Heading 5',
+			PRE : 'Code',
+		},
+		paragraphFormatSelection : true,		//WYSIWYG 편집기 도구 모음의 단락 형식 버튼이 현재 텍스트 선택에 대한 실제 단락 형식 이름을 보여주는 드롭 다운으로 대체됩니다.
+		spellcheck : true,						//맞춤법 검사
+		linkConvertEmailAddress : true,			//링크로 삽입 된 이메일 주소는 링크로 변환됩니다
+		linkAlwaysBlank : true,					//활성화되면 모든 링크가 새 탭에서 열리고이 작업을 설정하는 옵션이 UI에 표시되지 않습니다.
+		imagePasteProcess : true,				//붙여 넣은 이미지에 기본 이미지 설정을 사용합니다.
+		pasteAllowLocalImages : true,			//붙여 넣을 때 로컬 경로 (file : //)가있는 이미지를 제거합니다. 이 옵션을 활성화하면 HTTPS 웹 사이트에서 혼합 콘텐츠가 발생할 수 있습니다.
+		pastePlain : false,						//콘텐츠를 서식있는 텍스트 편집기에 붙여 넣을 때 텍스트 서식을 제거하지만 콘텐츠의 구조는 유지합니다.
+		toolbarButtons: [
+			'undo',
+			'redo',
+			'bold',
+			'formatOL',
+			'formatUL',
+			//'getPDF',
+			'fontAwesome',
+			'underline',
+			'insertImage',
+			'insertLink',
+			'insertTable',
+			//'insertVideo',
+			'textColor',
+			'backgroundColor',
+			'emoticons',
+			'strikeThrough',
+			'fontFamily',
+			'fontSize',
+			'inlineStyle',
+			'paragraphFormat',
+			'align',
+			'html'
+		]
+		
+	});
+	
+}
+
+var contextUrl = function(url) {
+	var replaced_str = "";
+	var arrSite = new Array("/admin","/member");
+	if(url.indexOf(contextPath) != -1) {
+		replaced_str = url;
+	} else {
+		for(var i=0;i<arrSite.length;i++) { 
+			if ( url.indexOf(arrSite[i]) != -1 )	{
+				replaced_str = url.replace(arrSite[i], contextPath +'/'+ arrSite[i]);	
+				return replaced_str;
+			}
+		}
+	}
+	
+	return replaced_str;
+}
+
+
+var setCookie = function(name, value, day) {
+    var date = new Date();
+    date.setTime(date.getTime() + day * 60 * 60 * 24 * 1000);//1일 
+    document.cookie = name + '=' + value + ';expires=' + date.toUTCString() + ';path=/';
+};
+
+var getCookie = function(name) {
+    var value = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return value? value[2] : null;
+};
+	
+var setTimeOffsetBetweenServerAndClient = function(){
+    var latestTouch = getCookie('latestTouch');
+    latestTouch = latestTouch==null ? null : Math.abs(latestTouch);
+    var clientTime = (new Date()).getTime();
+    var clientTimeOffset = clientTime - latestTouch;
+    setCookie('clientTimeOffset', clientTimeOffset);
+}
+
+var isSessionExpired = function(offset){
+    var sessionExpiry = Math.abs(getCookie('sessionExpiry'));
+    var timeOffset = Math.abs(getCookie('clientTimeOffset'));
+    var localTime = (new Date()).getTime();
+    setCookie('remainTime', (sessionExpiry - (localTime - timeOffset)));
+    console.log('####remainTime::' + (sessionExpiry - (localTime - timeOffset)));
+    return localTime - timeOffset > (sessionExpiry-(offset||0));
+}
+
+var leftSecond = function(){
+    var sessionExpiry = Math.abs(getCookie('sessionExpiry'));
+    var timeOffset = Math.abs(getCookie('clientTimeOffset'));
+    var localTime = (new Date()).getTime();
+    return Math.floor((sessionExpiry - (localTime - timeOffset))/1000);
+}
+
+var sessionTimerLayer = function(){
+	
+	$("#sessionTimerLayer").css("display","block");
+}
+
+
+function checkSessionExpired(){
+    //var isExpired = isSessionExpired(-60*1000 *9);  //세션만료예정시간을 60초 앞당겨서 검사
+    var second = leftSecond();
+    if(second < 60){
+    	$("#sessionTimerLayer").css("display","block");
+    	$("#secondDisplay").text(second + "초");
+    	if(second < 0){
+    		$("#sessionTimerLayer").css("display","none");
+    		var param={
+    				"url" : contextPath+"/index.do"
+    		}
+    		layerPopParamMsg($.message.get('message_new_M0003992'),param);
+    	}else{
+    		setTimeout('checkSessionExpired()', 1000);   //1초에 한번씩 티이머 반복
+    	}
+    }else{
+    	var second = leftSecond();
+        setTimeout('checkSessionExpired()', 1000);   //10초에 한번씩 티이머 반복
+    }
+}
+
+goRoot = function(){
+	window.location.href="/";
+}
+function sendHeartBeat(){
+	var param = {};
+    //common.ajaxCallbackSubmit("<c:url value='/session/ajax/getSessionExtend.do' />", param, getResult);
+	common.ajaxCallbackSubmit(contextPath + '/session/ajax/getSessionExtend.do', param, getResult);
+	//common.ajaxCallbackSubmit('/session/ajax/getSessionExtend.do', param, getResult);
+	
+}
+
+getResult = function(){
+	$("#sessionTimerLayer").css("display","none");
+}

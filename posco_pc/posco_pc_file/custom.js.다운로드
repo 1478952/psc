@@ -1,0 +1,68 @@
+$(document).ready(function(){
+	$('#quickMenuWrap').scrollToFixed({
+		marginTop: 10,
+		preFixed: function() {$(".btnTop").slideDown(400);},
+		postFixed: function() {$(".btnTop").slideUp(400);}
+	});
+
+    // $('#header').scrollToFixed({
+    //     preAbsolute: function() {$(this).css("opacity", "0.5")},
+    //     postAbsolute: function() {$(this).css("opacity", "1")}
+    // });
+
+	windowResize();
+	$(window).bind("resize", function() {windowResize();});
+
+	// 명칭에 Enter 이벤트
+	$('#searchCourseName').keydown(function (e){
+		if(e.keyCode == 13){
+			var url = "/member/courseInfo/courseList.do?searchEduTypeCode=0001" + "&courseName=" + $('#searchCourseName').val();
+			doMoveMenu('U12',url,'2','U10');
+		}
+	});
+
+	$(document).mousedown(function(e){
+		if ($(e.target).attr("data-topLayer") == "true") {
+			var dataClassName = $(e.target).attr("data-class");
+			if (dataClassName) {
+				var container = $("div[data-topLayer='true']");
+				container.each(function() {
+					if ($(this).hasClass(dataClassName) == false && $(this).hasClass("on")) {
+						$(this).prev().trigger("click");
+					}
+
+					if ($(this).hasClass(dataClassName) == true && $(this).hasClass("on") == false) {
+						if (dataClassName == "mailWrap") {
+							updateMailList();
+						} else if (dataClassName == "noticeWrap") {
+							updateNoHitStudyItemList();
+						}
+					}
+				});
+			}
+
+			return;
+		}
+		var container = $("div[data-topLayer='true']");
+		if (container.has(e.target).length == 0) {
+			$("button[data-topLayer='true']").each(function() {
+				var $tgt = $(this).next()
+				$(this).removeClass("on");
+				$tgt.removeClass("on");
+			})
+		}
+	});
+});
+
+function moveTop() {
+	$('body, html').animate({
+		scrollTop: 0
+	}, 800);
+}
+
+function windowResize() {
+	var windowHeight = $( window ).height();
+	var headerFooterHeight = 260;
+	var headerFooterHeight = $("#header").height() + $("#footer").height() + 23 + 30;
+	$("#container").css("min-height", windowHeight - headerFooterHeight + "px");
+}

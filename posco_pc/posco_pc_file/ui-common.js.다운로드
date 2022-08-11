@@ -1,0 +1,1735 @@
+/**
+ * IE ES6 Polyfill
+ */
+(function (arr) {
+    arr.forEach(function (item) {
+        if (item.hasOwnProperty('prepend')) {
+            return;
+        }
+        Object.defineProperty(item, 'prepend', {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: function prepend() {
+                var argArr = Array.prototype.slice.call(arguments),
+                    docFrag = document.createDocumentFragment();
+
+                argArr.forEach(function (argItem) {
+                    var isNode = argItem instanceof Node;
+                    docFrag.appendChild(isNode ? argItem : document.createTextNode(String(argItem)));
+                });
+
+                this.insertBefore(docFrag, this.firstChild);
+            }
+        });
+    });
+})([Element.prototype, Document.prototype, DocumentFragment.prototype]);
+
+if (!Object.keys) {
+    Object.keys = (function () {
+        'use strict';
+        var hasOwnProperty = Object.prototype.hasOwnProperty,
+            hasDontEnumBug = !{ toString: null }.propertyIsEnumerable('toString'),
+            dontEnums = ['toString', 'toLocaleString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'constructor'],
+            dontEnumsLength = dontEnums.length;
+
+        return function (obj) {
+            if (typeof obj !== 'function' && (typeof obj !== 'object' || obj === null)) {
+                throw new TypeError('Object.keys called on non-object');
+            }
+
+            var result = [],
+                prop,
+                i;
+
+            for (prop in obj) {
+                if (hasOwnProperty.call(obj, prop)) {
+                    result.push(prop);
+                }
+            }
+
+            if (hasDontEnumBug) {
+                for (i = 0; i < dontEnumsLength; i++) {
+                    if (hasOwnProperty.call(obj, dontEnums[i])) {
+                        result.push(dontEnums[i]);
+                    }
+                }
+            }
+            return result;
+        };
+    })();
+}
+
+if (window.NodeList && !NodeList.prototype.forEach) {
+    NodeList.prototype.forEach = Array.prototype.forEach;
+}
+
+if (!Element.prototype.matches) {
+    Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
+}
+
+if (!Element.prototype.closest) {
+    Element.prototype.closest = function (s) {
+        var el = this;
+
+        do {
+            if (el.matches(s)) return el;
+            el = el.parentElement || el.parentNode;
+        } while (el !== null && el.nodeType === 1);
+        return null;
+    };
+}
+
+/**
+ * ChildNode.append() polyfill
+ * https://gomakethings.com/adding-an-element-to-the-end-of-a-set-of-elements-with-vanilla-javascript/
+ * @author Chris Ferdinandi
+ * @license MIT
+ */
+(function (elem) {
+    // Check if element is a node
+    // https://github.com/Financial-Times/polyfill-service
+    var isNode = function (object) {
+        // DOM, Level2
+        if (typeof Node === 'function') {
+            return object instanceof Node;
+        }
+
+        // Older browsers, check if it looks like a Node instance)
+        return object && typeof object === 'object' && object.nodeName && object.nodeType >= 1 && object.nodeType <= 12;
+    };
+
+    // Add append() method to prototype
+    for (var i = 0; i < elem.length; i++) {
+        if (!window[elem[i]] || 'append' in window[elem[i]].prototype) continue;
+        window[elem[i]].prototype.append = function () {
+            var argArr = Array.prototype.slice.call(arguments);
+            var docFrag = document.createDocumentFragment();
+
+            for (var n = 0; n < argArr.length; n++) {
+                docFrag.appendChild(isNode(argArr[n]) ? argArr[n] : document.createTextNode(String(argArr[n])));
+            }
+
+            this.appendChild(docFrag);
+        };
+    }
+})(['Element', 'CharacterData', 'DocumentType']);
+
+(function (arr) {
+    arr.forEach(function (item) {
+        if (item.hasOwnProperty('remove')) {
+            return;
+        }
+        Object.defineProperty(item, 'remove', {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: function remove() {
+                this.parentNode.removeChild(this);
+            }
+        });
+    });
+})([Element.prototype, CharacterData.prototype, DocumentType.prototype]);
+
+/**
+ * -- IE ES6 Polyfill --
+ */
+
+/*var layerPop = function(){
+	var isLayer = document.querySelector('.layer-pop');
+	if(isLayer){
+		var bd = document.querySelector('body');
+		//var inHtml = html;
+		
+		isLayer.onclick = function(){
+			var html = isLayer.dataset.arg;
+			var dimm = document.createElement('div');
+			dimm.className = "dimm";
+			var inSource = document.createElement('div');
+			inSource.className = "layer-pop-wrap";
+			bd.insertBefore(dimm, bd.firstChild);
+			bd.insertBefore(inSource, bd.firstChild);
+			document.querySelector('.layer-pop-wrap').innerHTML = layer[html];
+			bd.style.overflow = 'hidden';
+
+			var close = document.querySelector('.btn-close');
+			close.onclick = function(){
+				document.querySelector('.dimm').remove();
+				document.querySelector('.layer-pop-wrap').remove();
+				bd.style.overflow = 'auto';
+			}
+		}
+	}else{}
+}
+*/
+
+var layerPop = function () {
+    var isLayer = document.querySelectorAll('.layer-pop');
+    if (isLayer) {
+        for (var i = 0; i < isLayer.length; i++) {
+            isLayer[i].onclick = function () {
+                var name = this.dataset.name;
+                var dimm = document.querySelector('.dimm');
+                var layer = document.querySelector('#' + name);
+                dimm.style.display = 'block';
+                layer.style.display = 'block';
+                var closeB = layer.querySelector('.btn-close');
+                closeB.onclick = function () {
+                    dimm.style.display = 'none';
+                    layer.style.display = 'none';
+                };
+            };
+        }
+    }
+};
+
+var lyConfirm = function (msg, callback) {
+    var obj = new Object();
+    obj.msg = msg;
+    obj.confirm = true;
+    if (callback != undefined && callback != null && !StringUtil.isEmpty(callback)) {
+        obj.callBackMethod = callback;
+    }
+    $.layerPop(obj);
+};
+
+var winResize = function () {
+    $(window).resize(function () {
+        var win_width = window.outerWidth;
+        console.log(win_width);
+        if (win_width <= 1280) {
+            document.querySelector('body').style.display = 'none';
+        } else {
+            document.querySelector('body').style.display = 'block';
+        }
+    });
+};
+// winResize();
+
+var userA = function () {
+    var userAgent = window.navigator.userAgent;
+    if (userAgent.indexOf('MSIE 9.0') > 0) {
+        document.querySelector('body').classList.add('ie9');
+    } else if (userAgent.indexOf('MSIE 10.0') > 0) {
+        document.querySelector('body').classList.add('ie10');
+    } else if (userAgent.indexOf('rv:11.0') > 0) {
+        document.querySelector('body').classList.add('ie11');
+    }
+};
+
+// 문구수정 : 길익현
+var more = function () {
+    var moreBtn = document.querySelectorAll('.more-info');
+    if (moreBtn) {
+        for (var i = 0; i < moreBtn.length; i++) {
+            moreBtn[i].onclick = function () {
+                var target = this.previousElementSibling;
+                var tHeight = target.querySelector('.cont-info-txt').offsetHeight;
+                if ($(target).hasClass('auto')) {
+                    $(target).removeClass('auto');
+                    $(target).css('height', '50px');
+                    this.innerHTML = '더보기';
+                } else {
+                    $(target).addClass('auto');
+                    $(target).css('height', tHeight);
+                    this.innerHTML = '닫기';
+                }
+            };
+        }
+    }
+};
+
+var moreInfo = function () {
+    var moreBtn = document.querySelectorAll('.list-typeH > .more-view');
+    if (moreBtn) {
+        for (var i = 0; i < moreBtn.length; i++) {
+            moreBtn[i].onclick = function () {
+                var target = this.previousElementSibling;
+                var parent = this.parentNode;
+                if ($(parent).hasClass('auto')) {
+                    $(parent).removeClass('auto');
+                    $(parent).css('height', '180');
+                    setTimeout(function () {
+                        $(target).css('display', 'none');
+                    }, 100);
+                    this.innerHTML = '더보기';
+                } else {
+                    $(parent).addClass('auto');
+                    $(target).css('display', 'block');
+                    setTimeout(function () {
+                        //$(parent).css('height', target.offsetHeight+200);
+                        $(parent).css('height', 'auto');
+                    }, 100);
+                    this.innerHTML = '닫기';
+                }
+            };
+        }
+    }
+};
+
+var targetPerson = function () {
+    var group = document.querySelector('.group-list-wrap');
+    if (group) {
+        var lists = group.querySelectorAll('.group-list');
+        for (var i = 0; i < lists.length; i++) {
+            for (var j = 0; j < lists[i].children.length; j++) {
+                if (lists[i].children[j].tagName == 'UL') {
+                    var buttonEl = document.createElement('button');
+                    //					buttonEl.setAttribute('class','btn-plus pos');
+                    buttonEl.setAttribute('class', 'btn-plus pos minus');
+                    lists[i].appendChild(buttonEl);
+                }
+            }
+        }
+        var btnPlus = group.querySelectorAll('.btn-plus');
+        for (var i = 0; i < btnPlus.length; i++) {
+            btnPlus[i].onclick = function () {
+                this.classList.toggle('minus');
+                var sibling = this.previousElementSibling;
+                sibling.classList.toggle('dpn');
+            };
+        }
+    }
+};
+
+//주석처리 : 길익현
+/*
+var heartChk = function(){
+	var heart = document.querySelector('.util-heart');
+	if(heart){
+		heart.onclick=function(){
+			this.classList.add('on');
+		}
+	}
+};
+*/
+
+/** 추가 및 수정된 JS [Date : 220518 "] */
+function validation(key) {
+    if (key === 'add') {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function getHref(target) {
+    const href = target.getAttribute('href');
+    const rel = href.replace(/\#/g, '');
+
+    return rel;
+}
+
+function cls(props, params) {
+    const key = Object.keys(params)[0];
+
+    //multiple
+    if (Array.isArray(props)) {
+        props.forEach(function (items) {
+            if (validation(key)) {
+                return items.classList.add(params[key]);
+            } else {
+                return items.classList.remove(params[key]);
+            }
+        });
+    } else {
+        //single
+        if (validation(key)) {
+            return props.classList.add(params[key]);
+        } else {
+            return props.classList.remove(params[key]);
+        }
+    }
+}
+
+//탭
+var tabs = function () {
+    const tabs = document.querySelectorAll('.tabs');
+    const tabsContents = document.querySelectorAll('.tabs-contents-wrap .tabs-content');
+
+    function tabsHandler(item) {
+        return function (e) {
+            e.preventDefault();
+
+            const chk = item.closest('.tabs-title-area') ? item.closest('.tabs-title-area') : item.closest('.tabs-target');
+            const _children = chk.nextElementSibling.querySelector('.tabs');
+
+            const target = chk;
+            const targetAll = target.querySelectorAll('ul > li');
+
+            if (_children) {
+                const child = _children.querySelectorAll('.tabs-target');
+                const contents = chk.nextElementSibling.children;
+
+                [].forEach.call(child, function (j, i) {
+                    tabsHandler(j, i);
+                });
+
+                [].forEach.call(contents, function (x, i) {
+                    cls(x, { remove: 'is-active' });
+                });
+            } else {
+                const contents = chk.nextElementSibling.children;
+
+                [].forEach.call(contents, function (x, i) {
+                    cls(x, { remove: 'is-active' });
+                });
+            }
+
+            [].forEach.call(tabsContents, function (x, i) {
+                if (targetAll[i] !== undefined) {
+                    cls(targetAll[i], { remove: 'is-active' });
+                }
+
+                const a = getHref(item.querySelector('a'));
+                const el = document.querySelector('#' + a);
+
+                cls(el, { add: 'is-active' });
+            });
+
+            cls(item, { add: 'is-active' });
+        };
+    }
+
+    function tabsDefaultFunc(param) {
+        const _clsCheck = param.parentElement.classList.contains('is-active');
+        const _rel = getHref(param);
+
+        if (_clsCheck) {
+            tabsContents.forEach(function (tabContent) {
+                if (tabContent.id === _rel) {
+                    cls(tabContent, { add: 'is-active' });
+                }
+            });
+        } else {
+            return;
+        }
+    }
+
+    if (tabs.length > 0) {
+        tabs.forEach(function (item) {
+            if (item.classList.contains('__none__event')) {
+                return;
+            } else {
+                const tabsTarget = item.querySelectorAll('ul.tabs-target > li > a');
+                tabsTarget.forEach(function (_child) {
+                    tabsDefaultFunc(_child);
+                    _child.addEventListener('click', tabsHandler(_child.parentElement), false);
+                });
+            }
+        });
+    }
+};
+
+function getOffset(el) {
+    const rect = el.getBoundingClientRect();
+    return {
+        left: rect.left + window.pageXOffset,
+        top: rect.top + window.pageYOffset
+    };
+}
+
+var menuSlide = function () {
+    //메뉴
+    const gnbList = document.querySelectorAll('#gnb > .gnb-nav > ul > li');
+
+    function gnbMouseEnter() {
+        gnbList.forEach(function (item) {
+            cls(item, { remove: 'gnb-active' });
+        });
+        cls(this, { add: 'gnb-active' });
+    }
+
+    function gnbMouseleave() {
+        cls(this, { remove: 'gnb-active' });
+    }
+
+    if (gnbList.length > 0) {
+        gnbList.forEach(function (item) {
+            item.addEventListener('mouseenter', gnbMouseEnter, false);
+            item.addEventListener('mouseleave', gnbMouseleave, false);
+        });
+    }
+
+    // 기존소스 백업 필요없을시 제거
+    // var navi = document.querySelector('nav');
+    // if (navi) {
+    //     var target = document.querySelector('.nav-sub-wrap');
+    //     var cont = document.querySelector('.container-wrap');
+    //     var util = document.querySelector('.util');
+    //     var topB = document.querySelector('.top-banner-box');
+    //     var myLearningT = $(navi).find('.mylearning-sub-menu');
+    //     var courseT = $(navi).find('.process-sub-menu');
+    //     var channelT = $(navi).find('.channel-sub-menu');
+    //     if (topB) {
+    //         topB.onmouseenter = function () {
+    //             $(target).slideUp();
+    //             myLearningT.hide();
+    //             courseT.hide();
+    //             channelT.hide();
+    //         };
+    //     }
+    //     navi.onmouseenter = function (e) {
+    //         e.preventDefault();
+    //         e.stopPropagation();
+    //         var quickM = $(target).find('.list-typeA li').length;
+    //         var myLearning = $(this).find('.mylearning-sub-menu').find('.sub-menu-alink').length;
+    //         var course = $(this).find('.process-sub-menu').find('.sub-menu-alink').length;
+    //         var channel = $(this).find('.channel-sub-menu').find('.sub-menu-alink').length;
+    //         var myLearningT = $(this).find('.mylearning-sub-menu');
+    //         var courseT = $(this).find('.process-sub-menu');
+    //         var channelT = $(this).find('.channel-sub-menu');
+    //         if (myLearning > course && myLearning > channel && myLearning > quickM) {
+    //             $(target).height(myLearning * 40 + 35);
+    //         } else if (course > myLearning && course > channel && course > quickM) {
+    //             $(target).height(course * 40 + 35);
+    //         } else if (channel > myLearning && channel > course && channel > quickM) {
+    //             $(target).height(channel * 40 + 35);
+    //         } else {
+    //             $(target).height(quickM * 40 + 35);
+    //         }
+    //         $(target).stop().slideDown();
+    //         myLearningT.stop().slideDown();
+    //         courseT.stop().slideDown();
+    //         channelT.stop().slideDown();
+    //     };
+    //     cont.onmouseenter = function () {
+    //         $(target).stop().slideUp();
+    //         myLearningT.stop().slideUp();
+    //         courseT.stop().slideUp();
+    //         channelT.stop().slideUp();
+    //     };
+    //     util.onmouseenter = function () {
+    //         $(target).stop().slideUp();
+    //         myLearningT.stop().slideUp();
+    //         courseT.stop().slideUp();
+    //         channelT.stop().slideUp();
+    //     };
+    // }
+};
+
+/** 추가 및 수정된 JS [Date : 220523 "] */
+var goTop = function () {
+    var go = document.querySelector('.go-top');
+    var foot = document.querySelector('.foot');
+
+    if (go) {
+        window.addEventListener('scroll', function () {
+            var topPos = document.documentElement.scrollTop;
+
+            if (topPos > 200) {
+                go.parentElement.classList.add('on');
+                go.onclick = function () {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                };
+            } else {
+                go.parentElement.classList.remove('on');
+            }
+
+            if (window.innerHeight > -(topPos - getOffset(foot).top)) {
+                cls(go.parentElement, { add: 'is-fixed' });
+            } else {
+                cls(go.parentElement, { remove: 'is-fixed' });
+            }
+        });
+    }
+};
+
+var starChk = function () {
+    var star = document.querySelector('.star-wrap');
+    if (star) {
+        var starNum = star.querySelectorAll('.check-type-star');
+        for (var i = 0; i < starNum.length; i++) {
+            starNum[i].onclick = function () {
+                $(this).nextAll('input[type=checkbox]').prop('checked', false);
+                $(this).nextAll('.check-type-star').removeClass('on');
+                $(this).prevAll('input[type="checkbox"]').prop('checked', true);
+                $(this).addClass('on');
+            };
+        }
+    }
+};
+
+//스크롤 헤더
+var scrollHeaderHandler = function () {
+    const header = document.querySelector('.head');
+    const fxTabs = document.querySelector('.tabs.fx .tabs-target');
+
+    function scrollHandler() {
+        const scrollTop = window.pageYOffset;
+        if (fxTabs) {
+            const _pos = fxTabs.getBoundingClientRect().top;
+            const _height = 184;
+            if (scrollTop + _pos - _pos > _height) {
+                cls(fxTabs, { add: 'is-fixed' });
+            } else {
+                cls(fxTabs, { remove: 'is-fixed' });
+            }
+        } else {
+            if (scrollTop > 0) {
+                cls(header, { add: 'on' });
+            } else {
+                cls(header, { remove: 'on' });
+            }
+        }
+    }
+
+    window.addEventListener('scroll', scrollHandler, false);
+};
+
+//검색
+var headSearch = function () {
+	/*
+    const headSearch = document.querySelector('.head-search');
+    const headSearchRec = document.querySelector('.head-rec-search');
+    const headSearchRecContent = document.querySelector('.head-rec-content#recList');
+    const headSearchText = document.querySelectorAll('.head-rec-content#recList .head-rec-list');
+    let searchOpen = false;
+
+    function searchHandler() {
+        headSearchRec.addEventListener('mouseleave', searchRecMouseLeave, false);
+
+        if (!searchOpen) {
+            searchRecOpenr();
+        } else {
+            searchRecClosed();
+        }
+    }
+
+    function searchRecMouseLeave() {
+        searchRecClosed();
+    }
+
+    function searchRecOpenr() {
+        cls(headSearchRec, { add: 'on' });
+        searchOpen = true;
+    }
+
+    function searchRecClosed() {
+        cls(headSearchRec, { remove: 'on' });
+        searchOpen = false;
+    }
+
+    function searchTxtHandler(e) {
+        const _target = document.querySelector('#rec-search');
+        const _result = e.target.textContent.replace(/^\s+|\s+$/g, '');
+        _target.value = _result;
+    }
+
+    if (headSearch) {
+        const headInput = headSearch.querySelector('input');
+        headInput.addEventListener('click', searchHandler, false);
+    }
+
+    if (headSearchText.length > 0) {
+        headSearchText.forEach(function (item) {
+            item.addEventListener('click', searchTxtHandler, false);
+        });
+    }
+
+    if (headSearchRecContent) {
+        // 대상 node 선택
+        const target = headSearchRecContent;
+
+        // 감시자 인스턴스 만들기
+        const observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+                if (mutation.type) {
+                    if (headSearchRecContent.children.length === 0) {
+                        headSearchRecContent.previousElementSibling.style.display = 'flex';
+                    } else {
+                        headSearchRecContent.previousElementSibling.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+        // 감시자의 설정:
+        const config = { attributes: true, childList: true, characterData: true };
+
+        // 감시자 옵션 포함, 대상 노드에 전달
+        observer.observe(target, config);
+    }
+    */
+};
+
+//버튼 클릭시 이펙트
+var buttonFoucs = function () {
+    const button = document.querySelectorAll('.-effect');
+
+    button.forEach(function (item) {
+        item.addEventListener('click', function (event) {
+            // event.preventDefault();
+
+            var $div = $('<span/>'),
+                btnOffset = $(this).offset(),
+                xPos = event.pageX - btnOffset.left,
+                yPos = event.pageY - btnOffset.top;
+
+            $div.addClass('ripple-effect');
+            var $ripple = $('.ripple-effect');
+
+            $ripple.css('height', $(this).height());
+            $ripple.css('width', $(this).height());
+            $div.css({
+                top: yPos - $ripple.height() / 2,
+                left: xPos - $ripple.width() / 2
+            }).appendTo($(this));
+
+            window.setTimeout(function () {
+                $div.remove();
+            }, 1900);
+        });
+    });
+};
+
+//토글버튼
+var toggleButton = function () {
+    const subscribe = document.querySelectorAll('.__subscribe');
+    let tgl = false;
+
+    function subscribeHandler(e) {
+        if (!tgl) {
+            tgl = true;
+            e.currentTarget.classList.add('on');
+            e.currentTarget.textContent = '구독중';
+        } else {
+            tgl = false;
+            e.currentTarget.classList.remove('on');
+            e.currentTarget.textContent = '채널구독';
+        }
+    }
+
+    if (subscribe.length > 0) {
+        subscribe.forEach(function (item) {
+            item.addEventListener('click', subscribeHandler, false);
+        });
+    }
+};
+
+var utilFunc = function () {
+    //별
+    $('#gradeSatiScore').click(function () {
+        $(this).parent().children().addClass('on');
+        $('.star-wrap').show();
+    });
+    $('.util-st .btn-star-close').click(function () {
+        $(this).parent().hide();
+    });
+    $('.util-st .check-type-star').click(function () {
+        $(this).parent().parent().hide();
+    });
+    
+    //비주얼 오버 그라데이션
+    $('.visual-wrap .visual li').on('mouseover', function () {
+        $(this).addClass('gradation-on');
+    });
+    $('.visual-wrap .visual li').on('mouseleave', function () {
+        $(this).removeClass('gradation-on');
+    });
+    
+    //하트
+    $('.ic_recomm').click(function () {
+        //$(this).toggleClass('on');
+    });
+    
+    //$('.ic_bookmark').click(function () {
+    //    $(this).toggleClass('on');
+    //});    
+
+    
+/*    //테이블 펼침
+    $('.acc-tl').click(function () {
+        $(this).toggleClass('is-active');
+        $(this).next('.acc-table-wrap').children().children().slideToggle();
+    });
+*/
+    
+    //accordion
+    $('.acc-head').click(function () {
+        $(this).toggleClass('is-active');
+        $(this).next('.acc-content').slideToggle();
+    });
+    
+    /* 개발테이블 사용시 제거 바람 */
+    $('.table-body-scroll').mCustomScrollbar({
+        theme: 'custom-main',
+        scrollEasing: 'linear',
+        scrollbarPosition: 'outside',
+        axis: 'y', // 가로 세로 스크롤바 생김
+        scrollInertia: 400
+    });
+    /* //개발테이블 사용시 제거 바람 */
+};
+
+var _replace = function (data) {
+    return data.replace(/^\s+|\s+$/g, '');
+};
+
+//document 클릭
+var docsHandler = function () {
+    function documentHandler(e) {
+        const item = e.target.closest('.notice-modify');
+        const drop = document.querySelectorAll('.drop');
+
+        if (item === null) {
+            drop.forEach(function (item) {
+                cls(item, { remove: 'on' });
+            });
+        }
+    }
+
+    document.addEventListener('click', documentHandler, false);
+};
+
+//게시판 textarea
+var noticeForm = function () {
+    const noticeLengths = document.querySelectorAll('.notice-submit .notice-lenghts');
+
+    //textarea change
+    function textareaChange(item, btn, legEl) {
+        const max = 1001;
+        return function (e) {
+            if (max > e.target.value.length > 0) {
+                btn.disabled = false;
+                legEl.textContent = e.target.value.length;
+            }
+
+            if (e.target.value.length === 0) {
+                btn.disabled = true;
+            }
+        };
+    }
+
+    if (noticeLengths.length > 0) {
+        noticeLengths.forEach(function (item) {
+            const textArea = item.closest('.form').querySelector('textarea');
+            const btn = item.parentElement.nextElementSibling.querySelector('button.turquoise');
+            const legEl = item.querySelector('span');
+
+            textArea.addEventListener('keyup', textareaChange(item, btn, legEl), false);
+
+            if (textArea.value.length > 0) {
+                legEl.textContent = textArea.value.length;
+                btn.disabled = false;
+            }
+        });
+    }
+};
+
+//상세검색
+var detailSearchForm = function () {
+    const searchList = document.querySelectorAll('.search-form--list .__list__items ul li a');
+
+    [].forEach.call(searchList, function (item, index) {
+        item.addEventListener('click', detailSearchClickFunc(item), false);
+    });
+
+    function detailSearchClickFunc() {
+        return function (e) {
+            const chElement = document.querySelectorAll('[aria-item]');
+
+            [].forEach.call(chElement, function (x) {
+                if (e.target.id === x.getAttribute('aria-item')) {
+                    x.classList.add('on');
+                } else if (!e.target.closest('.two-depth') && !e.target.closest('.three-depth')) {
+                    if (e.target.getAttribute('aria-depth', 'none')) {
+                        return;
+                    } else {
+                        x.classList.remove('on');
+                    }
+                }
+            });
+
+            if (e.target.parentElement.classList.contains('is-active')) {
+                e.target.parentElement.classList.remove('is-active');
+                const items = e.target.closest('.__list__items').nextElementSibling.querySelectorAll('ul');
+                [].forEach.call(items, function (x) {
+                    x.classList.remove('on');
+                });
+            } else if (e.target.getAttribute('aria-depth', 'none')) {
+                e.target.parentElement.classList.toggle('checked');
+            } else {
+                const parent = e.target.closest('.__list__items');
+                const parentNext = e.target.closest('.__list__items').nextElementSibling.querySelectorAll('li');
+                const _list = parent.querySelectorAll('li');
+                [].forEach.call(_list, function (x) {
+                    x.classList.remove('is-active');
+                });
+
+                [].forEach.call(parentNext, function (x) {
+                    x.classList.remove('is-active');
+                });
+                e.target.parentElement.classList.add('is-active');
+            }
+
+            const elements = e.currentTarget.parentElement;
+            const forms = e.target.closest('.form');
+            const checkgroup = forms.querySelector('.check-group');
+            if (elements.className === 'checked') {
+                checkgroup.innerHTML += '<button class="ui button turquoise tiny" aria-data-id=' + e.currentTarget.id + '>' + elements.textContent + '</button>';
+            } else {
+                const deleteElement = document.querySelectorAll('[aria-data-id]');
+                [].forEach.call(deleteElement, function (x) {
+                    if (x.getAttribute('aria-data-id') === e.currentTarget.id) {
+                        x.remove();
+                    }
+                });
+            }
+        };
+    }
+};
+
+
+//툴팁
+var tooltip = function () {
+    const tooltip = document.querySelectorAll('.icon-tooltip');
+
+    [].forEach.call(tooltip, function (item) {
+        item.addEventListener('click', _tooltip, false);
+    });
+
+    function _tooltip(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const get = e.target.querySelector('.tooltip-help');
+        if (!get) return;
+        const help = e.target.querySelector('.icon-tooltip-close');
+        get.classList.add('is-active');
+
+        help.addEventListener('click', _close, false);
+    }
+
+    function _close(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        e.target.parentElement.classList.remove('is-active');
+    }
+};
+
+//썸네일형 툴팁
+var clamp = function (params) {
+    const getTextSize = function (txt, font) {
+        const element = document.createElement('canvas');
+
+        const context = element.getContext('2d');
+        context.font = font;
+        const tSize = {
+            width: context.measureText(txt).width,
+            height: parseInt(context.font)
+        };
+        return tSize;
+    };
+
+    [].forEach.call(params, function (item) {
+        const lineHeight = getComputedStyle(item).getPropertyValue('line-height');
+        const fontFamily = getComputedStyle(item).getPropertyValue('font-family');
+        const tSize = getTextSize(item.textContent, '' + lineHeight + ' ' + fontFamily + '');
+        const tWidth = tSize.width - 48;
+        const wWidth = (tWidth / item.offsetWidth).toFixed(0);
+        const wHeight = item.getBoundingClientRect().height;
+        wHeight < tSize.height * wWidth ? [item.classList.add('over-lines')] : undefined;
+
+        overLinesTooltip(item);
+    });
+
+    function overLinesTooltip(item) {
+        if (item.classList.contains('over-lines')) {
+            const textCopy = item.textContent;
+            const toolEl = createTooltip(textCopy).dv;
+            item.parentElement.prepend(toolEl);
+
+            item.addEventListener('mouseleave', onMouseLeave(item), false);
+            item.addEventListener('mouseenter', onMouseEnter(item), false);
+        }
+    }
+
+    function onMouseEnter(item) {
+        return function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            item.parentElement.querySelector('.over-lines-tooltip').classList.add('is-active');
+        };
+    }
+
+    function onMouseLeave(item) {
+        return function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            item.parentElement.querySelector('.over-lines-tooltip').classList.remove('is-active');
+        };
+    }
+
+    function createTooltip(copy) {
+        const createDIV = document.createElement('DIV');
+        const createSPAN = document.createElement('SPAN');
+        createDIV.classList.add('over-lines-tooltip');
+        createSPAN.append(copy);
+        createDIV.append(createSPAN);
+
+        return { dv: createDIV };
+    }
+};
+
+//사이드바
+var side = function () {
+    const sidebar = document.querySelector('.sidebar');
+    const head = document.querySelector('.head');
+    const headPos = head.getBoundingClientRect();
+    const sidePos = sidebar.getBoundingClientRect();
+    const topButton = document.querySelector('.top-chat');
+    const sideButton = document.querySelector('.sidebar-toggle-button');
+    const mainWrapper = document.querySelector('.main-wrapper');
+    const dimmer = document.createElement('DIV');
+    let tgl = false;
+    let sideOpen = false;
+
+    dimmer.classList.add('dimmer');
+    mainWrapper.append(dimmer);
+
+    window.addEventListener('resize', sideResizeUpdate, false);
+    sideButton.addEventListener('click', sideToggleClickable(sidebar, sidePos), false);
+
+    function sideResizeUpdate() {
+        //1367보다 작을때
+        if (window.innerWidth < 1367) {
+            topButton.style.display = 'none';
+            if (tgl) {
+                cls(dimmer, { remove: 'is-active' });
+                cls(sideButton, { remove: 'is-mover' });
+            }
+
+            if (!sideOpen) {
+                cls([sidebar, sideButton], { add: 'is-active' });
+                cls(sideButton, { remove: 'is-mover' });
+                cls(dimmer, { remove: 'is-active' });
+                sidebar.style.right = -sidePos.width + 24 + 'px';
+                tgl = true;
+            }
+        } else {
+            document.body.style.overflow = 'auto';
+            topButton.style.display = 'block';
+            cls([sidebar, sideButton], { remove: 'is-active' });
+            cls(sideButton, { remove: 'is-mover' });
+            cls(dimmer, { remove: 'is-active' });
+            sidebar.style.right = 0 + 'px';
+
+            if (tgl) {
+                sidebar.style.right = 0 + 'px';
+                tgl = false;
+            }
+
+            sideOpen = false;
+        }
+    }
+
+    function sideToggleClickable(sidebar, sidePos) {
+        return function (e) {
+            e.preventDefault();
+
+            if (!tgl) {
+                sidebar.style.right = -sidePos.width + 24 + 'px';
+                cls(e.target, { remove: 'is-mover' });
+                cls(dimmer, { remove: 'is-active' });
+                if (sideOpen) {
+                    cls(sidebar, { add: 'is-active' });
+                } else {
+                    cls(sidebar, { remove: 'is-active' });
+                }
+                document.body.style.overflow = 'auto';
+
+                tgl = true;
+                sideOpen = false;
+            } else {
+                sidebar.style.right = 0 + 'px';
+                cls(sidebar, { add: 'is-active' });
+                cls(e.target, { add: 'is-mover' });
+                cls(dimmer, { add: 'is-active' });
+                sidebar.style.height = 'calc(100% - 96px)';
+                document.body.style.overflow = 'hidden';
+                tgl = false;
+                sideOpen = true;
+            }
+        };
+    }
+
+    //컨텐츠에 sidebar가 존재할때만 실행
+    if (sidebar) {
+        sidebar.style.top = headPos.height + 'px';
+        sideResizeUpdate();
+    } else {
+        return;
+    }
+};
+
+
+const scrollTableFixed = function () {
+    const scrollTable = document.querySelector('.scroll-table__fixed');
+    if (!scrollTable) return;
+
+    let arr = [];
+    const dataTable = scrollTable.querySelectorAll('.table-row');
+    [].forEach.call(dataTable, function (item) {
+        arr.push(item.dataset.uiScrolltable);
+    });
+
+    const tableHeaderLeft = scrollTable.querySelector('.table-row[data-ui-scrolltable=' + arr[0] + ']');
+    const tableHeaderRight = scrollTable.querySelector('.table-row[data-ui-scrolltable=' + arr[1] + ']');
+    const tablebodyLeft = scrollTable.querySelector('.table-row[data-ui-scrolltable=' + arr[2] + ']');
+    const tablebodyRight = scrollTable.querySelector('.table-row[data-ui-scrolltable=' + arr[3] + ']');
+
+    const _scrollTableInit = function () {
+        const headLeftPos = tableHeaderLeft.getBoundingClientRect();
+        const bodyLeftPos = tableHeaderLeft.getBoundingClientRect();
+
+        const headLeftWidth = headLeftPos.width;
+        const bodyLeftWidth = bodyLeftPos.width;
+
+        tableHeaderRight.style.width = 'calc(100% - ' + headLeftWidth + 'px' + ')';
+        tablebodyRight.style.width = 'calc(100% - ' + bodyLeftWidth + 'px' + ')';
+
+        tablebodyRight.addEventListener('scroll', scrollHandler, false);
+        tableDraw();
+    };
+
+    const tableDraw = function () {
+        [].forEach.call(tablebodyRight.children[0].rows, function (x, index) {
+            const h = x.getBoundingClientRect().height;
+
+            tablebodyLeft.children[0].rows[index].style.height = h + 'px';
+        });
+    };
+
+    function scrollHandler(e) {
+        tableHeaderRight.scrollLeft = e.target.scrollLeft;
+    }
+
+    _scrollTableInit();
+
+    window.scrollTableFixed = scrollTableFixed;
+};
+
+// -- 클릭이벤트 -- //
+
+/* 비디오 viewer 추가 [220607] */
+function showVideo(src) {
+    var $viewerWrap = $('<div>', { class: 'video-viewer-wrap' }),
+        $videoBox = $('<div>', { class: 'video-box' }),
+        $iframe = $('<iframe>', { src: src, frameborder: '0', allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture', allowfullscreen: true }),
+        $close = $('<button>', { class: 'close', text: '닫기' });
+    $close.bind('click', function (e) {
+        $viewerWrap.remove();
+        if ($('.modal-wrap').length == 0) $('body').removeClass('modal-opened');
+    });
+    $('body')
+        .addClass('modal-opened')
+        .append($viewerWrap.append($videoBox.append($iframe)).append($close));
+}
+/* 비디오 viewer 추가 [220607] */
+
+function favorMoreClick(target, props) {
+    target.classList.toggle('is-active');
+    props.classList.toggle('is-active');
+
+    const child = target.querySelector('ul');
+    const childPos = child.getBoundingClientRect().height;
+
+    if (target.classList.contains('is-active')) {
+        target.style.height = childPos + 'px';
+    } else {
+        target.style.height = 288 + 'px';
+    }
+}
+
+
+// -- 클릭이벤트 -- //
+function removeFunc(props, elementClasses) {
+    const listChecked = props.closest(elementClasses);
+    if (listChecked) {
+        return listChecked.remove();
+    }
+}
+
+function recAllDelete(props) {
+    const allList = props.querySelectorAll('.head-rec-list');
+    allList.forEach(function (item) {
+        item.remove();
+    });
+
+    props.style.display = 'none';
+}
+
+function memoDelete(props) {
+    removeFunc(props, '.memo-list-l');
+}
+
+function btnDelete(props) {
+    removeFunc(props, '.head-rec-list');
+}
+
+function visibleAdd(props) {
+    props.classList.add('visble-hidden');
+}
+
+function visibleRemove(props) {
+    props.classList.remove('visble-hidden');
+}
+
+function searchDetailOpen(props, param) {
+	param.classList.toggle('is-active');
+    $(props).slideToggle();
+}
+
+function onClickTabOpen(props, removeTarget) {
+    let openTarget = null;
+    const pcl = props.closest('.tabs');
+
+    if (removeTarget) {
+        openTarget = pcl.querySelector('.tabs-title-area a[href="#' + props.id + '"]');
+        removeTarget.classList.remove('is-active');
+        openTarget.parentElement.classList.add('is-active');
+        openTarget.parentElement.previousElementSibling.classList.remove('is-active');
+        cls(props, { add: 'is-active' });
+    } else {
+        const _removeContent = pcl.querySelectorAll('.tabs-content');
+        const _removeTarget = pcl.querySelectorAll('.tabs-target > li');
+        const _openTarget = pcl.querySelector('.tabs-target a[href="#' + props.id + '"]');
+
+        _removeContent.forEach(function (item, index) {
+            cls([item, _removeTarget[index]], { remove: 'is-active' });
+        });
+        openTarget = document.querySelector('.tabs-content#' + props.id + '');
+
+        cls(openTarget, { add: 'is-active' });
+        cls(_openTarget.parentElement, { add: 'is-active' });
+    }
+}
+
+
+function notice_modify(props) {
+    const allDrop = document.querySelectorAll('.drop');
+    const drop = props.querySelector('.drop');
+    if (drop) {
+        allDrop.forEach(function (item) {
+            item.classList.remove('on');
+        });
+        drop.classList.add('on');
+    }
+}
+// -- 클릭이벤트 -- //
+
+function swiperUpdate(popup_id, swipe) {
+    const checkedSwiper = popup_id.querySelector('.swiper-container');
+    if (checkedSwiper && swipe) {
+        swipe.update();
+    }
+}
+
+function swiperDestroy(popup_id, swipe) {
+    const checkedSwiper = popup_id.querySelector('.swiper-container');
+    if (checkedSwiper && swipe) {
+        swipe.destroy();
+    }
+}
+
+/* layer popup */
+function popup_open(popup_id, swipe) {
+    const checkfoot = popup_id.querySelector('.popup-foot');
+    if (!checkfoot) {
+        $(popup_id).find('.popup-contents').removeClass('none-after');
+        $(popup_id).find('.popup-contents').css({ 'max-height': 'calc(100% - 60px)' });
+    } else {
+        $(popup_id).find('.popup-contents').addClass('none-after');
+        $(popup_id).find('.popup-contents').css({ 'max-height': 'calc(100% - 160px)' });
+    }
+    $(popup_id).show();
+    $(popup_id).animate(
+        { opacity: '1' },
+        {
+            duration: 500,
+            easing: 'easeInOutQuart'
+        }
+    );
+    if (swipe) {
+        swiperUpdate(popup_id, swipe);
+    }
+}
+
+function popup_close(popup_id) {
+    $(popup_id).animate(
+        { opacity: '0' },
+        {
+            duration: 500,
+            easing: 'easeInOutQuart',
+            complete: function () {
+                $(popup_id).hide();
+            }
+        }
+    );
+}
+
+/** -- 추가 및 수정된 [Date : 220518 "]  -- */
+
+var datePic = function () {
+    var pic = document.querySelectorAll('.ui-datepicker-trigger');
+    if (pic.length > 0) {
+        for (var i = 0; i < pic.length; i++) {
+            pic[i].classList.add('on');
+        }
+    }
+};
+
+(function ($) {
+    $.fn.tabMove = function () {
+        return this.each(function () {
+            var $this = $(this);
+            var tabs = $this.find('a');
+            var tabBox = $this.nextAll('.tab-box');
+
+            tabs.each(function () {
+                var tt = $(this);
+                tt.on('click', function (e) {
+                    e.preventDefault();
+                    // layerPop();
+                    tabs.removeClass('on');
+                    tt.addClass('on');
+                    var target = tt.attr('href');
+                    tabBox.addClass('tab-hidden');
+                    $(target).removeClass('tab-hidden');
+                });
+            });
+        });
+    };
+
+    $.fn.totalSearch = function () {
+        return this.each(function () {
+            var $this = $(this);
+            //var tSearch = $this.find("[name='srchHeaderText']");
+            var tSearch = $this.find('#srchHeaderText');
+            
+            tSearch.on('click', function () {
+                var target = $this.find('.total-search-wrap');
+                var $close = target.parent().find('.btn-close');
+                target.show();
+                $this.find('.gnb-noti-wrap').hide();
+                $this.find('.profile-box').hide();
+                $close.on('click', function () {
+                    target.hide();
+                });
+            });
+        });
+    };
+
+    $.fn.searchDetail = function () {
+        return this.each(function (index) {
+            var $this = $(this);
+            var $reset = $this.parent().find('.search-reset');
+
+            $this.on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $this.hide();
+                $reset.show();
+                var target = $('.search-box-detail');
+                var $close = target.find('.btn-close');
+                target.show();
+                $close.on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    target.hide();
+                    $this.show();
+                    $reset.hide();
+                });
+            });
+        });
+    };
+
+    $.fn.profile = function () {
+        return this.each(function () {
+            var $this = $(this);
+            var $profile = $this.find('#btnMy');
+            $profile.on('click', function () {
+                var target = $('.profile-box');
+                var $close = target.find('.btn-close');
+                target.show();
+                $this.find('.gnb-noti-wrap').hide();
+                $this.find('.total-search-wrap').hide();
+                $close.on('click', function () {
+                    target.hide();
+                });
+            });
+        });
+    };
+
+    $.fn.gnbNoti = function () {
+        return this.each(function () {
+            var $this = $(this);
+            var $noti = $this.find('#btn-alram');
+            $noti.on('click', function () {
+                var target = $this.find('.gnb-noti-wrap');
+                var $close = target.find('.btn-close');
+                target.show();
+                $this.find('.profile-box').hide();
+                $this.find('.total-search-wrap').hide();
+                $close.on('click', function () {
+                    target.hide();
+                });
+            });
+        });
+    };
+
+    $.fn.accordian = function () {
+        return this.each(function () {
+            var $this = $(this);
+            var $accBtns = $this.find('.accordian-title-wrap');
+            $accBtns.each(function () {
+                var tt = $(this);
+                tt.on('click', function () {
+                    tt.next().slideToggle();
+                    tt.toggleClass('on');
+                });
+            });
+        });
+    };
+
+    $.fn.selBox = function () {
+        return this.each(function () {
+            var $this = $(this),
+                numOfOption = $(this).children('option').length;
+
+            $this.addClass('select-hide');
+            $this.wrap('<div class="select-box-wrap"></div>');
+            $this.after('<div class="select-box-sel"></div>');
+            var $selected = $this.next('div.select-box-sel');
+            $selected.text($this.children('option').eq(0).text());
+            $selected.after('<div class="select-box-option"></div>');
+            var $option = $this.parent().find('.select-box-option');
+            var $list = $option.append('<ul />');
+
+            for (var i = 0; i < numOfOption; i++) {
+                $('<li/>', {
+                    class: 'option-link',
+                    text: $this.children('option').eq(i).text(),
+                    rel: $this.children('option').eq(i).val()
+                }).appendTo($list);
+            }
+            $listItems = $list.children('li');
+
+            $selected.on('click', function (e) {
+                e.stopPropagation();
+                closeAllSelect(this);
+                $(this).toggleClass('active');
+            });
+
+            $listItems.on('click', function (e) {
+                e.stopPropagation();
+                $selected.text($(this).text()).addClass('active');
+                $this.val($(this).attr('rel'));
+            });
+
+            function closeAllSelect(elmnt) {
+                var x,
+                    y,
+                    i,
+                    xl,
+                    yl,
+                    arrNo = [];
+                x = document.getElementsByClassName('select-box-option');
+                y = document.getElementsByClassName('select-box-sel');
+                xl = x.length;
+                yl = y.length;
+                for (i = 0; i < yl; i++) {
+                    if (elmnt == y[i]) {
+                        arrNo.push(i);
+                    } else {
+                        y[i].classList.remove('active');
+                    }
+                }
+            }
+
+            $(document).on('click', closeAllSelect);
+        });
+    };
+
+    $.fn.selBox2 = function () {
+        return this.each(function () {
+            var $this = $(this),
+                numOfOption = $(this).children('option').length;
+
+            $this.addClass('select-hide');
+            $this.wrap('<div class="select-box-wrapBig"></div>');
+            $this.after('<div class="select-box-sel"></div>');
+            var $selected = $this.next('div.select-box-sel');
+            $selected.text($this.children('option').eq(0).text());
+            $selected.after('<div class="select-box-option"></div>');
+            var $option = $this.parent().find('.select-box-option');
+            var $list = $option.append('<ul />');
+
+            for (var i = 0; i < numOfOption; i++) {
+                $('<li/>', {
+                    class: 'option-link',
+                    text: $this.children('option').eq(i).text(),
+                    rel: $this.children('option').eq(i).val()
+                }).appendTo($list);
+            }
+            $listItems = $list.children('li');
+
+            $selected.on('click', function (e) {
+                e.stopPropagation();
+                closeAllSelect(this);
+                $(this).toggleClass('active');
+            });
+
+            $listItems.on('click', function (e) {
+                e.stopPropagation();
+                $selected.text($(this).text()).removeClass('active');
+                $this.val($(this).attr('rel'));
+            });
+
+            function closeAllSelect(elmnt) {
+                var x,
+                    y,
+                    i,
+                    xl,
+                    yl,
+                    arrNo = [];
+                x = document.getElementsByClassName('select-box-option');
+                y = document.getElementsByClassName('select-box-sel');
+                xl = x.length;
+                yl = y.length;
+                for (i = 0; i < yl; i++) {
+                    if (elmnt == y[i]) {
+                        arrNo.push(i);
+                    } else {
+                        y[i].classList.remove('active');
+                    }
+                }
+            }
+
+            $(document).on('click', closeAllSelect);
+        });
+    };
+
+    //주석처리 : 길익현
+    /*$.fn.cateSearch = function(){
+		return this.each(function(){
+			var $this = $(this);
+			var $cateWrap = $this.find('.depth-wrap');
+			var $cate = $this.find('.postube .sort-list > a');
+			var target;
+			var targetLast;
+			var depthDown;
+			$cate.each(function(index){
+				var tt = $(this);
+				tt.on('click', function(){
+					$this.find('.depth2').remove();
+					$cateWrap.after('<div class="cate-search-box depth2 depth-wrap"></div>');
+					target = $this.find('.depth-wrap');
+					targetLast = $this.find('.depth-wrap').last();
+					var targetNum = target.length;
+					tt.parent().siblings().find('>a').removeClass('on');
+					tt.addClass('on');
+					var num = index+1;
+					var depthT = "depth"+targetNum;
+					var depthS = "depth"+targetNum+num;
+					for(var i=0; i<cateList[depthT][depthS].length; i++){
+						targetLast.append('<div class="sort-list"><a href="#none">'+ cateList[depthT][depthS][i] +'</a></div>');
+					}
+					depthDown = target.last().find('.sort-list > a');
+					
+					depthDown.each(function(idx){
+						var ttt = $(this);
+						ttt.on('click', function(){
+							$this.find('.depth3').remove();
+							targetLast.after('<div class="cate-search-box depth-wrap"></div>');
+							target = $this.find('.depth-wrap').last();
+							target.addClass('depth'+(targetNum+1));
+							ttt.parent().siblings().find('>a').removeClass('on');
+							ttt.addClass('on');
+							var num2 = idx+1;
+							var depthTT = "depth"+(targetNum+1);
+							var depthSS = "depth"+(targetNum+1)+num2;
+							for(var j=0; j<cateList[depthTT][depthSS].length; j++){
+								target.append('<div class="sort-list"><a href="#none">'+ cateList[depthTT][depthSS][j] +'</a></div>');
+							}
+
+						});
+
+					});
+				});
+			});
+		});
+	}*/
+    /* 카테고리 검색  */
+    /*
+	$.fn.cateSearch = function(){
+		return this.each(function(){
+			var $this = $(this);
+			var cateWrap = $this.find('.depth-wrap');
+			
+			cateWrap.each(function(index){
+				var tt = $(this);
+				var cate = tt.find('.sort-list > a');
+				cate.each(function(idx){
+					var ttt = $(this);
+					if(index < Object.keys(cateList).length){
+						ttt.on('click', function(){
+							ttt.parents('.depth-wrap').nextAll('.depth-wrap').remove();
+							$this.append('<div class="cate-search-box depth-wrap"></div>');
+							ttt.parent().siblings().find('>a').removeClass('on');
+							ttt.addClass('on');
+							var target = $this.find('.depth-wrap');
+							var targetNum = target.length;
+							if(index > 1) {
+								target.last().addClass('depth3');	
+							}else {
+								target.last().addClass('depth'+targetNum);	
+							}
+							var num = idx+1;
+							var depthT = "depth"+targetNum;
+							var depthS = "depth"+targetNum+num;
+							for(var i=0; i<cateList[depthT][depthS].length; i++){
+								ttt.parents('.depth-wrap').next().append('<div class="sort-list"><a href="#none">'+ cateList[depthT][depthS][i] +'</a></div>');
+							}
+							console.log(Object.keys(cateList).length);
+							$('.cate-search-wrap').cateSearch();
+						});	
+					}
+				});
+			});
+		});
+	};
+	
+	var cateList = {
+		depth2: {
+			depth21: ["전체", "사무직무", "기술직무", "운전(조업)", "정비(전기/전자)", "안전보건교육", "자격취득"],
+			depth22: ["전체", "직무2", "기술직무2", "운전(조업)2", "정비(전기/전자)2", "안전보건교육2"],
+			depth23: ["전체", "사무3", "기술직무3", "운전(조업)3", "정비(전기/전자)3"],
+			depth24: ["전체", "사직4", "기술직무4", "운전(조업)4"],
+			depth25: ["전체", "무직5", "기술직무5"]
+		},
+		depth3: {
+			depth31: ["전체", "depth31", "depth31", "depth31", "depth31", "depth31", "depth31", "depth31", "depth31"],
+			depth32: ["전체", "depth32", "depth32", "depth32", "depth32", "depth32", "depth32", "depth32", "depth32"],
+			depth33: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+			depth34: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+			depth35: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+			depth36: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+			depth37: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+		},
+		depth4: {
+			depth41: ["전체", "depth31", "depth31", "depth31", "depth31", "depth31", "depth31", "depth31", "depth31"],
+			depth42: ["전체", "depth32", "depth32", "depth32", "depth32", "depth32", "depth32", "depth32", "depth32"],
+			depth43: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+			depth44: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+			depth45: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+			depth46: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+			depth47: ["전체", "마케팅", "경영전략", "재무/감사", "IT/보안", "구매/물류", "HR", "법무", "기타"],
+		}
+	};
+	*/
+    /* 카테고리 검색  */
+})(jQuery);
+
+!(function (a) {
+    a.fn.ellipsis = function (b) {
+        var c = {
+            row: 1,
+            onlyFullWords: !1,
+            char: '...',
+            callback: function () {},
+            position: 'tail'
+        };
+        return (
+            (b = a.extend(c, b)),
+            this.each(function () {
+                var c = a(this),
+                    d = c.text(),
+                    e = d,
+                    f = e.length,
+                    g = c.height();
+                c.text('a');
+                var h = parseFloat(c.css('lineHeight'), 20),
+                    i = c.height(),
+                    j = h > i ? h - i : 0,
+                    k = j * (b.row - 1) + i * b.row;
+
+                if (k >= g) return c.text(d), void b.callback.call(this);
+                var l = 1,
+                    m = 0,
+                    n = d.length;
+
+                if ('tail' === b.position) {
+                    for (; n > l; ) (m = Math.ceil((l + n) / 2)), c.text(d.slice(0, m) + b['char']), c.height() <= k ? (l = m) : (n = m - 1);
+
+                    (d = d.slice(0, l - 2)), b.onlyFullWords && (d = d.replace(/[\u00AD\w\uac00-\ud7af]+$/, '')), (d += b['char']);
+                } else if ('middle' === b.position) {
+                    for (var o = 0; n > l; ) (m = Math.ceil((l + n) / 2)), (o = Math.max(f - m, 0)), c.text(e.slice(0, Math.floor((f - o) / 2)) + b['char'] + e.slice(Math.floor((f + o) / 2), f)), c.height() <= k ? (l = m) : (n = m - 1);
+                    o = Math.max(f - l, 0);
+                    var p = e.slice(0, Math.floor((f - o) / 2)),
+                        q = e.slice(Math.floor((f + o) / 2), f);
+                    b.onlyFullWords && (p = p.replace(/[\u00AD\w\uac00-\ud7af]+$/, '')), (d = p + b['char'] + q);
+                }
+                c.text(d), b.callback.call(this);
+            }),
+            this
+        );
+    };
+})(jQuery);
+
+window.addEventListener('DOMContentLoaded', function () {
+    userA();
+    more();
+    menuSlide();
+    targetPerson();
+    //주석처리 : 길익현
+    //heartChk();
+    goTop();
+    starChk();
+    layerPop();
+    moreInfo();
+    $('.tab-typeA').tabMove();
+    $('.tab-typeB').tabMove();
+    $('.tab-typeC').tabMove();
+    $('.tab-typeD').tabMove();
+	$('.head-util').totalSearch();
+	$('.head-util').profile();
+	$('.head-util').gnbNoti();
+    $('.accordian-wrap').accordian();
+    /*$('.select-box-typeA').selBox();
+	$('.select-box-typeB').selBox2();*/
+    $('.search-detail').searchDetail();
+    //주석처리 : 길익현
+    //$('.cate-search-wrap').cateSearch();
+
+    $('.txtOveflow').ellipsis({
+        row: 2
+    });
+
+    // -- 추가된 JS [Date : 220523] -- //
+    tabs();
+    scrollHeaderHandler();
+    headSearch();
+    buttonFoucs();
+    toggleButton();
+    utilFunc();
+    noticeForm();
+    docsHandler();
+    detailSearchForm();
+    //memoOpener();
+    //memoCloser();
+    // -- 추가된 JS [Date : 220523] -- //
+    
+    tooltip();
+    clamp(document.querySelectorAll('.integrated-list-name.two-lines[role="tooltip"]'));
+});
+
+window.addEventListener('load', function () {
+    const sideCheck = document.querySelector('.sidebar');
+    if (sideCheck) {
+        side();
+    }
+    
+    scrollTableFixed();
+});

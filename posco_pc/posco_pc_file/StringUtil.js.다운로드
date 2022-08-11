@@ -1,0 +1,201 @@
+var StringUtil = new Object(); 
+
+StringUtil.isEmpty = function(val){
+	if(val == null || val == "" || val.replace(/ /gi,"") == "") {
+		return true;
+	} 
+	return false;
+};
+
+
+StringUtil.getStr = function(val){
+	if(val == null || val == "null" || val == "undefined" || val == undefined){
+		return "";
+	} 
+	return val;
+};
+
+/**
+ * 없을경우 str로 치환
+ */
+StringUtil.getStrChange = function(val,str){
+	if(val == null || val == "undefined"){
+		if(str == null || str == "undefined"){
+			str="";
+		}
+		return str;
+	} 
+	return val;
+};
+
+StringUtil.fillZero = function fillZero(sVal, iSize) 
+{
+    while(sVal.length < iSize)  
+    {
+		sVal = "0" + sVal;
+    }
+	return sVal;
+};
+
+
+StringUtil.isAlpha = function(sVal){
+  // Alphabet
+  var sAlphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  var iLen=sVal.length;
+
+  for(var i=0;i<iLen;i++)
+  {
+    if(sAlphabet.indexOf(sVal.substring(i,i+1))<0)
+    {
+      alert("check the alphabet");				
+      return false;
+    }
+  }
+  return true;		
+};
+
+StringUtil.strLength = function(sVal)
+{	
+  var sBit = '';
+  var iLen = 0;
+
+  for (var i = 0 ; i < sVal.length ; i++ )
+  {
+    sBit = sVal.charAt(i);
+    if ( escape( sBit ).length > 4 )
+    {
+      iLen = iLen + 2;
+    }
+	else
+	{
+      iLen = iLen + 1;
+    }
+  }
+  return iLen;
+};
+
+
+StringUtil.chkStrLength = function(str,field) 
+{
+	iSize = str.getAttribute("Maxlength");
+
+	if (field == null) 
+		field = '';
+
+	if ( strLength(str.value) > iSize)
+	{
+		alert(" "+field+" "+iSize+" "+Math.floor(iSize/2)+" ");
+
+        str.select();
+	    str.focus();
+		return false;
+	}
+
+	return true;
+};
+
+StringUtil.toSymbol = function(str) 
+{
+	if(str == null || str == ""){
+		return null;
+	}
+	 str = str.replace(/<br>/gi, "\r\n");
+	 str = str.replace(/&nbsp;/gi, " ");
+	 str = str.replace(/&lt;/gi, "<");
+	 str = str.replace(/&gt;/gi, ">");
+	 str = str.replace(/&quot;/gi, "\"");
+	 str = str.replace(/&acute;/gi, "'");
+	 str = str.replace(/&#40;/gi, "\\(");
+	 str = str.replace(/&#41;/gi, "\\)");
+	return str;
+};
+
+
+StringUtil.changToSymbol = function(str) 
+{
+	if(str == null || str == ""){
+		return null;
+	}
+	
+	 // 작동안함. (주석처리)
+	 //str = str.replace(/\r\n/gi	, "<br>"); //거의 다 쓰기때문에 놔둠
+	 str = str.replace(/\n/g,"<br>");
+	 /*
+	 str = str.replace(/ /gi		, "&nbsp;");
+	 str = str.replace(/</gi, "&lt;");
+	 str = str.replace(/>/gi, "&gt;");
+	 str = str.replace(/\"/gi, "&quot;");
+	 str = str.replace(/'/gi, "&acute;");
+	 */
+	 str = str.replace(/<script/gi, "‹script");
+	return str;
+};
+
+
+//byte 체크
+StringUtil.doTextByteCheck = function( obj, maxByte ) {
+	var content = $(obj).val();
+	var checkByteLen = maxByte;			//byte체크 제한 수
+	for ( b=i=0; c=content.charCodeAt(i); ){
+		b+=c>>7?2:1;
+		if ( b > checkByteLen ) {
+			break;
+		}
+		i++;
+	}
+	if ( b > checkByteLen ) {
+		 $(obj).val(content.substring(0,i));
+	}
+}
+
+
+
+/**
+ * 휴대폰번호 기호 삽입
+ * ex)01067382323 -> 010-6738-2323
+ * 조건에 맞지 않을 경우 빈값으로 return
+ */
+StringUtil.hpNo = function( hpNo, str) {
+	if(str == null || str  =="undefined"){
+		str ="";
+	}
+	if(hpNo != null){
+		hpNo = StringUtil.strReplace(hpNo);
+	}
+	var regExp = /^\d{3}-\d{3,4}-\d{4}$/;
+	if(hpNo.length >=10){
+		if(!regExp.test(hpNo)){
+			//10자리 전화번호(0101112222)
+			if(hpNo.length <= 10){
+				return hpNo.substr(0,3)+str+hpNo.substr(3,3)+str+hpNo.substr(6,4);
+			//11자리 전화번호(01011112222)
+			}else{
+				return hpNo.substr(0,3)+str+hpNo.substr(3,4)+str+hpNo.substr(7,4);
+			}
+		}else{
+			return "";
+		}
+	}else{
+		return "";
+	}
+}
+
+//특수문자 제거
+StringUtil.strReplace = function(str){
+	return str.replace(/[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi, "");
+}
+
+
+/**
+ * 말줄임표
+ * 1. str : 타켓 글자
+ * 2. maxStr : 글자수 제한
+ * 3. 치환할 문자열("...."또는"~~~~"등 지정문자 치환) 
+ */
+StringUtil.Abbreviation = function(str,maxStr,changStr){
+	if(str.length >Number(maxStr)){
+		return str.substr(0,maxStr)+changStr;
+	}else{
+		return str;
+	}
+}

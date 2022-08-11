@@ -1,0 +1,150 @@
+/**
+ * >페이징 처리 부분
+ * ※아래와 같이 사용 하시면 됩니다.
+ *  - 주의할 점은 ajax통신 후 collback받을 메소드는 ajax처리 이전 선언을 해줘야합니다. 
+ * 
+ * function messageBtn(number){
+ *  	var pageParam = {
+ *  			 pageArrayId     : "페이지 번호가 셋팅되는 부분"
+ *    			,length : 5 //페이지 레코드(표시할 페이지 갯수)셋팅
+ *    			,pageLinkCount    : 10 //나타낼 버튼 갯수(페이지 버튼 갯수) 셋팅
+ *    			,jspPageNum : 2 //jsp페이지 내 여러개의 paging이 필요할 경우 순번을 매긴다.
+ *  	};
+ *  	var collbackArray = function(response){
+ *  		var data = response.data;
+ *  		var html ="";
+ *  		for(var i=0;i<response.data.length;i++){
+ *  		}
+ *  		$("#Array").html(html);
+ *  	}
+ *  
+ *  	//
+ *  	paging.ajaxCallback('[대상URL]', pageParam, collbackArray);
+ *	}
+ * 
+ */
+var paging = new Object();
+var pagingParam = new Object();
+paging.ajaxCallback = function(url, params, callbackMethod){
+	var response = null;
+	var returnMessage = params.returnMessage || "hidden";
+	if(callbackMethod != null){
+		$.ajax({
+	        type : "POST",
+	        url : url,
+	        data : params,
+	        dataType : "json",
+	        success : function(response){
+	        	if (returnMessage == "show" && response.messageMap != undefined && response.messageMap.statusMessage != undefined && response.messageMap.statusMessage != "")
+					alert(response.messageMap.statusMessage);
+				if (callbackMethod)
+					callbackMethod(response);
+				
+				var jspPageNum = params.jspPageNum;
+				params.url= url;
+				params.callbackMethod = callbackMethod;
+				if(jspPageNum !=null && jspPageNum != "" && jspPageNum !="undefined"){
+					pagingParam[jspPageNum] = params;	
+				}else{
+					params.jspPageNum=1;
+					pagingParam[1] = params;
+				}
+				
+				// 페이지 생성
+			    var pageParam = {
+			    		 pageArrayId      : params.pageArrayId                                        //페이지 버튼 지정 영역
+			    		,totalRows        : response.recordsTotal                                     //총 갯수
+			    		,currentPageIndex : response.currentPageIndex                                 //선택 버튼
+			    		,length      	  : params.length == null?10:params.length          		  //페이지당 레코드수(표시할 페이지 갯수)
+			    		,pageLinkCount    : params.pageLinkCount== null?10:params.pageLinkCount       //나타낼 페이지 갯수(페이지 버튼 갯수)
+			    		,jspPageNum		  : params.jspPageNum
+			    };
+			    paging.makePagingTag(pageParam);
+	        }
+			,error : function(xhr, status, err) {
+				console.log("4");
+			}
+	    });
+	}
+};
+
+//페이지 이동 부분
+paging.pagingAction = function(start,jspPageNum){
+	pagingParam[jspPageNum].start = start;
+	var jsonData = JSON.stringify(pagingParam[jspPageNum]);	//json형식으로 변환
+	paging.ajaxCallback(pagingParam[jspPageNum].url, JSON.parse(jsonData), pagingParam[jspPageNum].callbackMethod);
+}
+
+paging.makePagingTag = function(param){
+	  var pageArrayId = param.pageArrayId;              //페이지 id
+	  var totalRows = param.totalRows;                  //총 갯수
+	  var currentPageIndex = param.currentPageIndex;    //선택한 페이지
+	  var length = param.length;              //페이지당 레코드수(표시할 페이지 갯수)
+	  var pageLink = param.pageLinkCount;               //나타낼 페이지 갯수(페이지 버튼 갯수)
+	  var jspPageNum = param.jspPageNum;               //
+	  
+	
+    if (length == undefined || length == 0) { 
+    	length = 4; 
+    }
+    
+    if (pageLink == undefined || pageLink == 0) { 
+    	pageLink = 10; // 페이지표시수
+    }
+
+    var lastPage = 0;
+    var currentPage = 0;
+
+    var firstPageIndex = 0;
+    var lastPageIndex = 0;
+
+    if (currentPageIndex <= 1){
+        currentPage = 1;
+    }else{
+        currentPage = Math.ceil(currentPageIndex / length) + 1;
+    }
+    
+    if (totalRows > 0) {
+        lastPage = Math.ceil(totalRows / length);
+        lastPageIndex = (lastPage - 1) * length;
+
+	    if (lastPage < 1) lastPage = 1;
+	
+	    if (currentPage > lastPage) currentPage = lastPage;
+	
+	    
+	    var HTML = "";
+	    var start = Math.floor((currentPage - 1) / pageLink) * pageLink + 1;
+	    var end = start + (pageLink - 1);
+	
+	    firstPageIndex = ((start - 1) * length) - (pageLink * length);
+	
+	    if (firstPageIndex < 1) firstPageIndex = 0;
+	    if (end > lastPage) end = lastPage;
+	    if (currentPage > end) currentPage = end;
+	
+	    if (start > pageLink) {
+	        HTML += " <a href=\"javascript:paging.pagingAction(0,"+jspPageNum+")\" class=\"first\">&lt;&lt;</a>\n";
+	        HTML += " <a href=\"javascript:paging.pagingAction(" + firstPageIndex + ","+jspPageNum+")\" class=\"prev\">&lt;</a>\n";
+	    }
+	    
+	    var pageIndex = 0;
+	    for (var i = start; i <= end; i++) {
+	      pageIndex = (i - 1) * length;
+	      
+	      if (currentPage == i)
+	        HTML += " <a href=\"javascript:paging.pagingAction(" + pageIndex + ","+jspPageNum+")\" class=\"on\">" + i + "</a>\n";
+	      else
+	        HTML += " <a href=\"javascript:paging.pagingAction(" + pageIndex + ","+jspPageNum+")\">" + i + "</a>\n";
+	    }
+	
+	    if (end != lastPage) {
+	      HTML += " <a href=\"javascript:paging.pagingAction(" + end * length + ","+jspPageNum+")\" class=\"next\">&gt;</a>\n";
+	      HTML += " <a href=\"javascript:paging.pagingAction(" + lastPageIndex + ","+jspPageNum+")\" class=\"last\">&gt;&gt;</a>\n";
+	    }
+	    $("#"+pageArrayId).html(HTML);
+    }else{
+    	$("#"+pageArrayId).html("");
+    }
+    
+};

@@ -1,0 +1,85 @@
+var appToken = "";
+function callNative(func, param) {
+	 var os ="";
+	 var varUA = navigator.userAgent.toLowerCase(); //userAgent 값 얻기
+	 if (varUA.indexOf('android') > -1) {
+	 	os ="A";
+	 } else if ( varUA.indexOf("iphone") > -1||varUA.indexOf("ipad") > -1||varUA.indexOf("ipod") > -1 ) {
+	 	os ="I";
+	 }
+	 
+     if (param == undefined) {
+         if (os == "A") command = "window.android." + func + "()";
+         if (os == "I") command = "window.webkit.messageHandlers." + func + ".postMessage()";
+     } else {
+         if (os == "A") command = "window.android." + func + "('" + JSON.stringify(param) + "')";
+         if (os == "I") command = "window.webkit.messageHandlers." + func + ".postMessage(" + JSON.stringify(param) + ")";
+     }
+     //eval(command);
+     ( new Function('return ' + command) )();
+ }
+ 
+ //토큰값을 가져옵니다.
+ function getPref(cbGetPref,appTokenId,defaultValue) {
+     preference("get", cbGetPref,appTokenId,defaultValue);//1.:메소드명 ,2:앱에 저장되어있는키값
+ }
+ 
+ //토큰값을 셋팅할 경우 필요
+ function setPref() {
+     preference("set", "cbSetPref", "appTokenId", "newValue");
+ }
+
+ var cbGetPref = function(result, message) {
+     if (result) {
+    	 alert("cbGetPref :::: "+message);
+    	 appToken = message
+     } else {
+     }
+ }
+
+ var cbSetPref = function(result, message) {
+     if (result) {
+    	 console.log("setPref success");
+     } else {
+    	 console.log("setPref failure : " + message);
+     }
+ }
+ 
+
+ function preference(action, callback, key, value) {
+     var param = {
+         "action": action,
+         "callback": callback, 
+         "key": key,
+         "value": value
+     }
+     callNative("preference", param);
+ }
+ 
+ //앱 강제 종료시 사용
+ function appFinish() {
+     var param = {
+         "action": "finish",
+         "callback": "cbAppFinish"
+     }
+     callNative("app", param);
+ }
+
+ function openBrowser(url) {
+     var param = {
+        "action": "open"
+        ,"callback": "cbOpenBrowser"
+        ,"url": url //다운로드 주소로
+        ,"finish": false //창을 닫는지안닫는지(true : 닫음)
+    }
+     
+     callNative("browser", param);
+ }
+
+ var cbOpenBrowser = function(result, message) {
+     if (result) {
+         console.log("openBrowser success");
+     } else {
+    	 console.log("openBrowser failure : " + message);
+     }
+ }

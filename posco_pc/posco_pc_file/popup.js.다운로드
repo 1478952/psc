@@ -1,0 +1,370 @@
+readMember = function(studyItemSeq){
+	var params = {
+		studyItemSeq : studyItemSeq
+	};
+	var opts = $.extend({},tmpParamData, params);
+	common.layerPopupParam("/member/common/popup/readMember.do", "#divReadLayer", opts);
+}
+
+likeMember = function(studyItemSeq){
+	var params = {
+		studyItemSeq : studyItemSeq
+	};
+	var opts = $.extend({},tmpParamData, params);
+	common.layerPopupParam("/member/common/popup/likeMember.do", "#divLikeLayer", opts);
+}
+
+sendMessage = function(formNm, checkNm){
+	var checkSize = $("input[name="+checkNm+"]:checked").length;
+	if(checkSize < 1){
+		alert("보낼 쪽지에 선택된 인원이 없습니다.");
+		return;
+	}
+	var url = "/member/common/popup/sendMessage.do";
+	common.layerPopupParam(url,"#messageLayer",$("#"+formNm).serializeArray());
+}
+
+message_txtCount = function(){
+	var str = $("#sndConts").val();
+	$("#message_length").text(str.length);
+}
+
+
+/**
+ * 공통 레이어 팝업
+ */
+common.userLayerPopup = function(url, id, params){
+	$.ajax({
+        type : "POST",
+        url : contextUrl(url),
+        cache: false,
+		data : params || "",
+        success : function(data) {
+        	common.userPopupCallback(data, id);
+	    }
+    });
+};
+
+common.userLayerPopupParam = function(url, id, params){
+//	var validation = params.validation || false;
+//	var formId = params.formId;
+//	var frm = $('#' + formId);
+
+	var checkYN = true;
+//	if (validation)
+//		checkYN = frm.validator();
+
+	if(checkYN){
+		$.ajax({
+	        type : "POST",
+	        url : contextUrl(url),
+	        cache: false,
+	        data : params,
+	        success : function(data) {
+	        	common.userPopupCallback(data, id);
+		    }
+	    });
+	}
+};
+
+/**
+ * 팝업콜백함수
+ */
+common.userPopupCallback = function(data, id) {
+	/* 팝업 콜백 함수 수정 */
+	/*$(id).remove();
+
+	var $obj;
+
+	if ($(id).length == 0) {$("body").append(data);}
+
+	$obj = $(id);
+	$obj.addClass("active");
+
+	// 공통 기능 (front.js)
+	$obj.find("[data-active]").tgActive();*/
+
+
+	// 기존 팝업 콜백 함수
+
+	 $(id).remove();
+	 var $thisPop,
+		$lyClose,
+		$dim,$prevPop,
+
+		popConHeight = 0,
+		bH = $(window).height();
+	;
+
+	if ($(id).length == 0)
+		$("body").append(data);
+
+	$("body").css({"overflow":"hidden"});
+
+	$thisPop = $(id);
+	$lyClose = $(id).find(".btn-close");
+
+	if($(".psLyTop").length) {
+		$prevPop = $(".psLyPop.psLyTop");
+	};
+
+	$(".psLyPop").removeClass("psLyTop");
+	$thisPop.addClass("active");
+
+	setTimeout(function () {
+		popConHeight = $thisPop.find(".psLyPopContentsIn").height();
+		if (bH < popConHeight) {
+			$thisPop.addClass("psLyPopScroll");
+		};
+	}, 1);
+
+	// Hide Scroll
+	$("html").addClass("psLy");
+
+	// Popup Open
+	$thisPop.addClass("psLyShow");
+
+	// Event Stop
+	$thisPop.find(".psLyPopContentsWrap").on("click", function (e) {
+		e.stopPropagation();
+	});
+
+	$lyClose.on("click", function () {
+		$("body").css({"overflow":"visible"});
+		$(id).removeClass("psLyShow");
+		if (!$(".psLyPop.psLyShow").length) {
+			$(".psLyDimWrap").remove();
+			$("html").removeClass("psLy");
+		};
+		try{
+			$prevPop.addClass("psLyTop");
+		}catch(e){}
+		$thisPop.removeClass("psLyTop");
+
+		$thisPop.remove();
+	});
+
+	// 필수 체크 표시
+	$("form").each(function() {
+		$(this).onloadValidator(true);
+	});
+
+	// 초기 로드시 Height
+	popConHeight = $thisPop.find(".psLyPopContentsIn").height();
+	var bodyHeight = bH*90/100-68;
+	//var bodyHeight = bH;
+	if (bodyHeight < popConHeight) {
+		$thisPop.addClass("psLyPopScroll");
+	};
+
+
+	$thisPop.find(".psLyPopContentsIn").on("DOMSubtreeModified", function () {
+		popConHeight = $(id).height();
+		if (bH*90/100-68 < popConHeight) {
+			$thisPop.addClass("psLyPopScroll");
+		};
+	});
+
+
+	// Custom Scroll
+	$(".psLyPopContentsScroll, .scrollBox").mCustomScrollbar({
+		axis:"y",
+		theme:"dark-3",
+		mouseWheel: {scrollAmount: 400}
+	});
+
+	// Drag
+	$(id).find(".psLyPopContainerIn").draggable({
+		handle: "h1"
+	});
+
+	// Select Box
+	//$thisPop.ps_designSelBox();
+};
+
+
+//로딩바 필요시 사용 - 사용자Web용
+function startLoading() {
+	if($("#divLoading").length == 0) {
+		var htmlStr = '<div id="divLoading" class="loading-dimm"><div class="lds-default"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
+		$("body").prepend(htmlStr);
+	}
+	
+	$('.lds-default').show();
+	$("#divLoading").css({
+		display: "block"
+	});
+};
+
+//로딩바 종료시 사용 - 사용자Web용
+function endLoading(){
+	$('.lds-default').hide();
+	$("#divLoading").css({
+		display: "none"
+	});
+	
+	$("#divLoading").remove();
+}
+
+//콜백 관련
+var lyAlert = function(msg, calback){
+	var obj = new Object();
+	obj.msg = msg;
+	if(calback != undefined && calback != null){
+		if((typeof calback == 'function')){
+			obj.callBackMethod = calback;
+		}else if(!StringUtil.isEmpty(calback)) {
+			obj.callBackMethod = calback;
+		}
+	}
+	$.layerPop(obj);
+};
+
+/**
+ * 일반 메시지
+ * 예)layerPopMsg("현재 비밀번호를 입력하세요.");
+ */
+var layerPopMsg = function(msg){
+	var obj = new Object();
+	obj.msg = msg;
+	$.layerPop(obj);
+};
+
+/**
+ * 일반 메시지 중 param값이 필요한 경우
+ * 예)1.  var param ={
+ *			   "iconClass" :"warning"
+ *		 }
+ *		layerPopMsg("현재 비밀번호를 입력하세요.",param);
+ */
+var layerPopParamMsg = function(msg,param){
+	var obj = new Object();
+	if(param !=null && param !='') {
+		obj = param; //param값이 있으면 넘겨준다.
+	}
+	obj.msg = msg;
+	$.layerPop(obj);
+};
+
+/**
+ * 일반 컨펌창
+ */
+var confirmLayerPop = function(msg,calback){
+	var obj = new Object();
+	obj.msg = msg;
+	obj.confirm = true;
+	if(calback != undefined && calback != null && !StringUtil.isEmpty(calback)) obj.callBackMethod = calback;
+	$.layerPop(obj);
+}
+
+/**
+ * 일반 컨펌창
+ */
+var confirmParamLayerPop = function(msg,calback,callBackParam){
+	var obj = new Object();
+	obj.msg = msg;
+	if(callBackParam !=null && callBackParam !='') {
+		obj.callBackParam = callBackParam;
+	}
+	obj.confirm = true;
+	if(calback != undefined && calback != null && !StringUtil.isEmpty(calback)) obj.callBackMethod = calback;
+	$.layerPop(obj);
+}
+
+
+/**
+ * 최소자릿수 check
+ * ele:[타켓ID] ,length:[길이] ,msg:[메시지]
+ * 예)if(!valMinlength("password",8,"새로운 비밀번호 8자리 이상 입력하세요."))return false;
+ */
+var valMinlength = function(ele,length,msg){
+	var obj = new Object();
+	if ($("#"+ele).val().length < length){
+		obj.msg = msg;
+		$.layerPop(obj);
+		return false;
+	}
+	return true;
+}
+
+/**
+ * 최대자릿수 check
+ * ele:[타켓ID] ,length:[길이] ,msg:[메시지]
+ * 예)if(!valMaxlength("password",16,"새로운 비밀번호 16자리 이하로 입력하세요."))return false;
+ */
+var valMaxlength = function(ele,length,msg){
+	var obj = new Object();
+	if ($("#"+ele).val().length > length){
+		obj.msg = msg;
+		$.layerPop(obj);
+		return false;
+	}
+	return true;
+}
+
+/**
+ * @description phone number 속성 처리
+ * 잘못된 전화번호입니다. 다시 확인해 주세요
+ */
+var valPhonenumber = function(ele,msg){
+	var pattern = /[^0-9]/;
+	if(pattern.test(($("#"+ele).val()).replace(/\s+/g,""))){
+		layerPopMsg(msg);
+		return false;
+	}
+	return true;
+}
+
+/**
+ * @description type에 따른 validator 처리
+ */
+var valRequired = function(ele, msg){
+	if($("#"+ele).attr('type')=='checkbox' || $("#"+ele).attr('type')=='radio'){
+		if (!$("#"+ele).is(':checked') ) {	
+			layerPopMsg(msg);
+			return false;
+		}
+	}/*else{
+		if($("#"+ele).val()==''){
+			this.error.result = true;
+			if ($("#"+ele).attr("type") == "text" || $("#"+ele)[0].tagName.toLowerCase() == "textarea"){
+				layerPopMsg(msg);
+				return false;
+			}else{
+				layerPopMsg(msg);
+				return false;
+			}
+		}
+	}*/
+	return true;
+}
+
+/**
+ * @description 이메일 형식 체크
+ */
+var valEmail = function(ele, msg){
+	var pattern = /([0-9a-zA-Z_-]+)@([0-9a-zA-Z_-]+)\.([0-9a-zA-Z_-]+)/;
+	if (!pattern.test($("#"+ele).val())){
+		layerPopMsg(msg);
+		return false;
+	}
+	return true;
+}
+
+/**
+ * @description 그룹형식 체크(radio,checkBox등)
+ * 1.ele : 타겟 이름
+ * 2.msg : 메시지 넣기
+ */
+var valGroupcheck = function(ele,msg){
+	var flag = false;
+	ele = document.getElementsByName(ele);
+	for(var i=0;i<ele.length;i++) {
+		if(ele[i].checked) flag = true;
+	}
+	if(!flag){
+		layerPopMsg(msg);
+		return false;
+	}
+	return true;
+}
