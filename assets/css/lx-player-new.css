@@ -1,19 +1,23 @@
+body {
+  margin: 0px;
+}
+
 /* a wrapper element that tracks the mouse vertically */
 .vjs-thumbnail-holder {
-    position: absolute;
-    left: -1000px;
+  position: absolute;
+  left: -1000px;
 }
 
 /* the thumbnail image itself */
 .vjs-thumbnail {
-    position: absolute;
-    left: 0;
-    bottom: 1.3em;
-    opacity: 0;
-    transition: opacity .2s ease;
-    -webkit-transition: opacity .2s ease;
-    -moz-transition: opacity .2s ease;
-    -mz-transition: opacity .2s ease;
+  position: absolute;
+  left: 0;
+  bottom: 1.3em;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  -webkit-transition: opacity 0.2s ease;
+  -moz-transition: opacity 0.2s ease;
+  -mz-transition: opacity 0.2s ease;
 }
 
 /* fade in the thumbnail when hovering over the progress bar */
@@ -21,13 +25,13 @@
 .vjs-progress-control:hover .vjs-thumbnail,
 .vjs-progress-control.fake-active .vjs-thumbnail,
 .vjs-progress-control:active .vjs-thumbnail {
-    opacity: 1;
+  opacity: 1;
 }
 
 /* ... but hide the thumbnail when hovering directly over it */
 .vjs-progress-control:hover .vjs-thumbnail:hover,
 .vjs-progress-control:active .vjs-thumbnail:active {
-    opacity: 0;
+  opacity: 0;
 }
 @charset "UTF-8";
 
@@ -2348,12 +2352,59 @@ video-js.vjs-ended .vjs-big-play-button {
  * @author Mariusz Rajczakowski <mrajczakowski@gmail.com>
  * @license MIT
  */
-.vjs-thumbnail-holder{position:absolute;left:-1000px;bottom:11px;height:86px}
-.vjs-thumbnail-img{max-width:none;position:absolute;left:0;bottom:16px;opacity:0;-webkit-transition:opacity 0.2s ease;transition:opacity 0.2s ease;height:86px;padding:5px 0 23px 0;background:rgba(255,255,255,0.7)}
-.vjs-progress-control:hover .vjs-thumbnail-img,.vjs-progress-control.fake-active .vjs-thumbnail-img,.vjs-progress-control:active .vjs-thumbnail-img,.vjs-progress-control:hover .vjs-thumbnail-time,.vjs-progress-control.fake-active .vjs-thumbnail-time,.vjs-progress-control:active .vjs-thumbnail-time{opacity:1}
-.vjs-progress-control:hover .vjs-thumbnail-holder:hover,.vjs-progress-control:active .vjs-thumbnail-holder:active,.vjs-progress-control:hover .vjs-thumbnail-holder:hover .vjs-thumbnail-time,.vjs-progress-control:active .vjs-thumbnail-holder:active .vjs-thumbnail-time{opacity:0}
-.vjs-thumbnail-time{bottom:23px;opacity:0;color:#333;font-size:1.1em;width:40px;margin-left:-20px;position:absolute;z-index:9999}
-.vjs-thumbnail-arrow{bottom:12px;position:absolute;opacity:0.7;width:10px;margin-left:-5px;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #fff}
+.vjs-thumbnail-holder {
+  position: absolute;
+  left: -1000px;
+  bottom: 11px;
+  height: 86px;
+}
+.vjs-thumbnail-img {
+  max-width: none;
+  position: absolute;
+  left: 0;
+  bottom: 16px;
+  opacity: 0;
+  -webkit-transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease;
+  height: 86px;
+  padding: 5px 0 23px 0;
+  background: rgba(255, 255, 255, 0.7);
+}
+.vjs-progress-control:hover .vjs-thumbnail-img,
+.vjs-progress-control.fake-active .vjs-thumbnail-img,
+.vjs-progress-control:active .vjs-thumbnail-img,
+.vjs-progress-control:hover .vjs-thumbnail-time,
+.vjs-progress-control.fake-active .vjs-thumbnail-time,
+.vjs-progress-control:active .vjs-thumbnail-time {
+  opacity: 1;
+}
+.vjs-progress-control:hover .vjs-thumbnail-holder:hover,
+.vjs-progress-control:active .vjs-thumbnail-holder:active,
+.vjs-progress-control:hover .vjs-thumbnail-holder:hover .vjs-thumbnail-time,
+.vjs-progress-control:active .vjs-thumbnail-holder:active .vjs-thumbnail-time {
+  opacity: 0;
+}
+.vjs-thumbnail-time {
+  bottom: 23px;
+  opacity: 0;
+  color: #333;
+  font-size: 1.1em;
+  width: 40px;
+  margin-left: -20px;
+  position: absolute;
+  z-index: 9999;
+}
+.vjs-thumbnail-arrow {
+  bottom: 12px;
+  position: absolute;
+  opacity: 0.7;
+  width: 10px;
+  margin-left: -5px;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #fff;
+}
 /*# sourceMappingURL=videojs-thumbnails.css.map */
 .right-click-alert {
   position: absolute;
@@ -2366,7 +2417,7 @@ video-js.vjs-ended .vjs-big-play-button {
   font-size: 1rem;
   align-items: center;
   vertical-align: middle;
-  padding: .5em 1rem;
+  padding: 0.5em 1rem;
   border-radius: 5px;
 }
 /*.right-click-alert::before {*/
@@ -2382,7 +2433,7 @@ video-js.vjs-ended .vjs-big-play-button {
 
 .right-click-alert.passive {
   visibility: hidden;
-  transition-duration: .2s;
+  transition-duration: 0.2s;
   transition-property: visibility;
   transition-timing-function: ease;
 }
